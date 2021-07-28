@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MultiLabelBinarizer
 import cv2
+from PIL import Image
 
 
 class MnistDataLoader(BaseDataLoader):
@@ -23,9 +24,8 @@ class MnistDataLoader(BaseDataLoader):
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
 
 
-class FaceExpressionPhoenixDataLoader(Dataset):
+class FaceExpressionPhoenixDataset(Dataset):
 
-    # TODO: Pass dir_name, image_dir_name and labels_csv_name
     def __init__(self, data_path, x_dir, y_csv, transform=None, target_transform=None):
 
         # https://www.researchgate.net/publication/340049545_Facial_Expression_Phoenix_FePh_An_Annotated_Sequenced_Dataset_for_Facial_and_Emotion-Specified_Expressions_in_Sign_Language
@@ -65,11 +65,36 @@ class FaceExpressionPhoenixDataLoader(Dataset):
             inp_img_name += ".png"
 
         in_image = cv2.imread(inp_img_name)
+        # in_image = Image.open(inp_img_name).convert('RGB')
+        in_image = cv2.resize(in_image, (224, 224))
+        # print(in_image.size)
 
         if self.transform:
             in_image = self.transform(in_image)
+            # print(in_image.size)
 
         if self.target_transform:
             out_labels = self.target_transform(out_labels)
 
+        in_image = np.asarray(in_image)
+        in_image = transforms.functional.to_tensor(in_image)
+        # print(in_image.shape)
+
+        out_labels = np.asarray(out_labels, dtype=np.float32)
+
         return in_image, out_labels
+
+
+class FaceExpressionPhoenixDataLoader(BaseDataLoader):
+    """
+    MNIST data loading demo using BaseDataLoader
+    """
+
+    def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, training=True):
+        trsfm = transforms.Compose([
+            transforms.Resize([224, 224])
+        ])
+        self.data_dir = data_dir
+        # self.dataset = FaceExpressionPhoenixDataset(data_dir, 'FePh_images', 'FePh_labels.csv', transform=trsfm)
+        self.dataset = FaceExpressionPhoenixDataset(data_dir, 'FePh_images', 'FePh_labels.csv')
+        super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)

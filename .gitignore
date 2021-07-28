@@ -110,3 +110,5 @@ datasets/
 .vscode/
 .idea/
 __MACOSX/
+
+config_temp.json
