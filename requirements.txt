@@ -1,7 +1,12 @@
+numpy
+opencv-python
+scikit-image
+scikit-learn
+scipy
+tensorboard
+tensorboard-data-server
+tensorboard-plugin-wit
 torch
 torchvision
-numpy
-tqdm
-tensorboard
 pandas
-scikit-image
+

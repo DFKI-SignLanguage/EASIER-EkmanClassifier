@@ -9,8 +9,8 @@
     "data_loader": {
         "type": "FaceExpressionPhoenixDataLoader",
         "args":{
-            "data_dir": "C:\\Users\\chira\\OneDrive - uni-saarland.de\\Codebases\\DFKI_HiWi\\ACG\\Easier\\Datasets\\FePh",
-            "batch_size": 2,
+            "data_dir": "/ds/images/FaceExpressionPhoenix",
+            "batch_size": 64,
             "shuffle": true,
             "validation_split": 0.1,
             "num_workers": 2
