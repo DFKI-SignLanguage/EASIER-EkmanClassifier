@@ -92,9 +92,12 @@ class FaceExpressionPhoenixDataLoader(BaseDataLoader):
 
     def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, training=True):
         trsfm = transforms.Compose([
-            transforms.Resize([224, 224])
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.5654627, 0.5846006, 0.6371888], std=[0.2638379,  0.22503051, 0.20097686]),
+
         ])
         self.data_dir = data_dir
-        # self.dataset = FaceExpressionPhoenixDataset(data_dir, 'FePh_images', 'FePh_labels.csv', transform=trsfm)
-        self.dataset = FaceExpressionPhoenixDataset(data_dir, 'FePh_images', 'FePh_labels.csv')
+        self.dataset = FaceExpressionPhoenixDataset(data_dir, 'FePh_images', 'FePh_labels.csv', transform=trsfm)
+        # self.dataset = FaceExpressionPhoenixDataset(data_dir, 'FePh_images', 'FePh_labels.csv')
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
