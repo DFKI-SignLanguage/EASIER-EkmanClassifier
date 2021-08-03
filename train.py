@@ -49,8 +49,7 @@ def main(config):
                       device=device,
                       data_loader=data_loader,
                       valid_data_loader=valid_data_loader,
-                      lr_scheduler=lr_scheduler,
-                      len_epoch=None)
+                      lr_scheduler=lr_scheduler)
 
     trainer.train()
 
