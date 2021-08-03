@@ -9,6 +9,7 @@ class Trainer(BaseTrainer):
     """
     Trainer class
     """
+
     def __init__(self, model, criterion, metric_ftns, optimizer, config, device,
                  data_loader, valid_data_loader=None, lr_scheduler=None, len_epoch=None):
         super().__init__(model, criterion, metric_ftns, optimizer, config)
@@ -39,6 +40,8 @@ class Trainer(BaseTrainer):
         """
         self.model.train()
         self.train_metrics.reset()
+        outputs = []
+        targets = []
         for batch_idx, (data, target) in enumerate(self.data_loader):
             data, target = data.to(self.device), target.to(self.device)
 
@@ -48,10 +51,10 @@ class Trainer(BaseTrainer):
             loss.backward()
             self.optimizer.step()
 
-            self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
-            self.train_metrics.update('loss', loss.item())
-            for met in self.metric_ftns:
-                self.train_metrics.update(met.__name__, met(output, target))
+            output = output.cpu().detach().numpy()
+            target = target.cpu().detach().numpy()
+            outputs.append(output)
+            targets.append(target)
 
             if batch_idx % self.log_step == 0:
                 self.logger.debug('Train Epoch: {} {} Loss: {:.6f}'.format(
@@ -62,11 +65,20 @@ class Trainer(BaseTrainer):
 
             if batch_idx == self.len_epoch:
                 break
+
+        self.writer.set_step(epoch)
+        self.train_metrics.update('loss', loss.item())
+
+        output = torch.Tensor(np.concatenate(outputs, axis=0))
+        target = torch.Tensor(np.concatenate(targets, axis=0))
+        for met in self.metric_ftns:
+            self.train_metrics.update(met.__name__, met(output, target))
+
         log = self.train_metrics.result()
 
         if self.do_validation:
             val_log = self._valid_epoch(epoch)
-            log.update(**{'val_'+k : v for k, v in val_log.items()})
+            log.update(**{'val_' + k: v for k, v in val_log.items()})
 
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()
@@ -81,6 +93,8 @@ class Trainer(BaseTrainer):
         """
         self.model.eval()
         self.valid_metrics.reset()
+        outputs = []
+        targets = []
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
@@ -88,11 +102,19 @@ class Trainer(BaseTrainer):
                 output = self.model(data)
                 loss = self.criterion(output, target)
 
-                self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
-                self.valid_metrics.update('loss', loss.item())
-                for met in self.metric_ftns:
-                    self.valid_metrics.update(met.__name__, met(output, target))
+                output = output.cpu().detach().numpy()
+                target = target.cpu().detach().numpy()
+                outputs.append(output)
+                targets.append(target)
+
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+
+        self.writer.set_step(epoch, 'valid')
+        self.valid_metrics.update('loss', loss.item())
+        output = torch.Tensor(np.concatenate(outputs, axis=0))
+        target = torch.Tensor(np.concatenate(targets, axis=0))
+        for met in self.metric_ftns:
+            self.valid_metrics.update(met.__name__, met(output, target))
 
         # add histogram of model parameters to the tensorboard
         for name, p in self.model.named_parameters():
