@@ -1,3 +1,4 @@
+import torch
 from torchvision import datasets, transforms
 from base import BaseDataLoader
 import os
@@ -64,23 +65,31 @@ class FaceExpressionPhoenixDataset(Dataset):
         if not os.path.exists(inp_img_name):
             inp_img_name += ".png"
 
-        in_image = cv2.imread(inp_img_name)
-        # in_image = Image.open(inp_img_name).convert('RGB')
-        in_image = cv2.resize(in_image, (224, 224))
+        # in_image = cv2.imread(inp_img_name)
+        in_image = Image.open(inp_img_name).convert('RGB')
+        # in_image = cv2.resize(in_image, (224, 224))
         # print(in_image.size)
+
+        tensor_trsnfrm = transforms.ToTensor()
 
         if self.transform:
             in_image = self.transform(in_image)
             # print(in_image.size)
+        else:
+            in_image = tensor_trsnfrm(in_image)
 
         if self.target_transform:
             out_labels = self.target_transform(out_labels)
+        else:
+            out_labels = torch.Tensor(out_labels)
 
-        in_image = np.asarray(in_image)
-        in_image = transforms.functional.to_tensor(in_image)
+
+        # in_image = np.asarray(in_image)
+        # in_image = transforms.functional.to_tensor(in_image)
         # print(in_image.shape)
 
-        out_labels = np.asarray(out_labels, dtype=np.float32)
+        # out_labels = torch.from_numpy(np.asarray(out_labels, dtype=np.float32))
+        # out_labels = torch.Tensor(out_labels)
 
         return in_image, out_labels
 
@@ -92,9 +101,13 @@ class FaceExpressionPhoenixDataLoader(BaseDataLoader):
 
     def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, training=True):
         trsfm = transforms.Compose([
-            transforms.Resize([224, 224])
+            # transforms.ToPILImage(),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.6374226, 0.5848234, 0.56568706], std=[0.20125638, 0.22521368, 0.2639905]),
+            transforms.Resize((224, 224)),
         ])
         self.data_dir = data_dir
-        # self.dataset = FaceExpressionPhoenixDataset(data_dir, 'FePh_images', 'FePh_labels.csv', transform=trsfm)
-        self.dataset = FaceExpressionPhoenixDataset(data_dir, 'FePh_images', 'FePh_labels.csv')
+        self.dataset = FaceExpressionPhoenixDataset(data_dir, 'FePh_images', 'FePh_labels.csv', transform=trsfm)
+        # self.dataset = FaceExpressionPhoenixDataset(data_dir, 'FePh_images', 'FePh_labels.csv')
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
