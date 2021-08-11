@@ -64,7 +64,7 @@ class FaceExpressionPhoenixDataset(Dataset):
     def __getitem__(self, idx):
 
         inp_img_name = self.image_inputs[idx]
-        out_labels = self.labels[idx]
+        out_label = self.labels[idx]
 
         if not os.path.exists(inp_img_name):
             inp_img_name += ".png"
@@ -79,11 +79,11 @@ class FaceExpressionPhoenixDataset(Dataset):
             in_image = tensor_trsnfrm(in_image)
 
         if self.target_transform:
-            out_labels = self.target_transform(out_labels)
-        else:
-            out_labels = torch.Tensor(out_labels)
+            out_label = self.target_transform(out_label)
+        # else:
+        #     out_label = torch.Tensor(out_label)
 
-        return in_image, out_labels
+        return in_image, out_label
 
     def reorder_samples(self, new_idxs):
         self.image_inputs = [self.image_inputs[i] for i in new_idxs]
