@@ -6,6 +6,8 @@ from torch.utils.data import Dataset
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MultiLabelBinarizer
+from sklearn.utils import class_weight
+import numpy as np
 import cv2
 from PIL import Image
 
@@ -46,11 +48,15 @@ class FaceExpressionPhoenixDataset(Dataset):
 
         mlb = MultiLabelBinarizer()
         y_df = pd.read_csv(self.y_csv_path)
-        # Removing all data points with 'Face_not_visible'
+        # Removing all data points with 'Face_not_visible' i.e no labels
         y_df.dropna(inplace=True)
-        # y_df.dropna(subset=['Final_labels'], inplace=True)
-        y_df['Facial_label'] = y_df['Facial_label'].apply(lambda x: np.array([int(i) for i in x]))
+        # Extracting multiple labels
+        y_df['Facial_label'] = y_df['Facial_label'].apply(lambda x: [int(i) for i in x])
+        y_df['num_labels'] = y_df['Facial_label'].apply(lambda x: len(x))
+        # Removing all data points with more than one labels ==> Ambiguous
+        y_df = y_df[y_df["num_labels"] == 1]
         self.image_inputs = y_df['External ID'].apply(lambda img_name: os.path.join(self.x_dir_path, img_name)).tolist()
+
         self.labels = mlb.fit_transform(y_df['Facial_label'].to_numpy())
 
     def __len__(self):
@@ -58,23 +64,18 @@ class FaceExpressionPhoenixDataset(Dataset):
 
     def __getitem__(self, idx):
 
-        # TODO: Use image name from csv which does not contain 'Face_not_visible'
         inp_img_name = self.image_inputs[idx]
         out_labels = self.labels[idx]
 
         if not os.path.exists(inp_img_name):
             inp_img_name += ".png"
 
-        # in_image = cv2.imread(inp_img_name)
         in_image = Image.open(inp_img_name).convert('RGB')
-        # in_image = cv2.resize(in_image, (224, 224))
-        # print(in_image.size)
 
         tensor_trsnfrm = transforms.ToTensor()
 
         if self.transform:
             in_image = self.transform(in_image)
-            # print(in_image.size)
         else:
             in_image = tensor_trsnfrm(in_image)
 
@@ -83,15 +84,25 @@ class FaceExpressionPhoenixDataset(Dataset):
         else:
             out_labels = torch.Tensor(out_labels)
 
-
-        # in_image = np.asarray(in_image)
-        # in_image = transforms.functional.to_tensor(in_image)
-        # print(in_image.shape)
-
-        # out_labels = torch.from_numpy(np.asarray(out_labels, dtype=np.float32))
-        # out_labels = torch.Tensor(out_labels)
-
         return in_image, out_labels
+
+    def reorder_samples(self, new_idxs):
+        self.image_inputs = [self.image_inputs[i] for i in new_idxs]
+        self.labels = self.labels[new_idxs]
+
+    def get_sample_weights(self, idxs):
+        print("Calculating sampler weights...")
+        labels_array = np.argmax(self.labels[idxs], axis=1)
+        class_weights = class_weight.compute_class_weight(class_weight='balanced', classes=np.unique(labels_array),
+                                                          y=labels_array)
+        num_classes = len(self.label_names.keys())
+        assert (class_weights.size == num_classes)
+
+        sampler_weights = np.zeros(len(labels_array))
+        for i in range(len(labels_array)):
+            sampler_weights[i] = class_weights[int(labels_array[i])]
+
+        return sampler_weights
 
 
 class FaceExpressionPhoenixDataLoader(BaseDataLoader):
@@ -109,5 +120,4 @@ class FaceExpressionPhoenixDataLoader(BaseDataLoader):
         ])
         self.data_dir = data_dir
         self.dataset = FaceExpressionPhoenixDataset(data_dir, 'FePh_images', 'FePh_labels.csv', transform=trsfm)
-        # self.dataset = FaceExpressionPhoenixDataset(data_dir, 'FePh_images', 'FePh_labels.csv')
-        super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
+        super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers, is_imbalanced_classes=True)
