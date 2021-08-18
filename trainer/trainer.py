@@ -72,7 +72,10 @@ class Trainer(BaseTrainer):
         output = torch.Tensor(np.concatenate(outputs, axis=0))
         target = torch.Tensor(np.concatenate(targets, axis=0))
         for met in self.metric_ftns:
-            self.train_metrics.update(met.__name__, met(output, target))
+            if "_per_class" not in met.__name__:
+                self.train_metrics.update(met.__name__, met(output, target))
+            elif "_per_class" in met.__name__:
+                self.train_metrics.update_per_class(met.__name__, met(output, target))
 
         log = self.train_metrics.result()
 
@@ -114,7 +117,10 @@ class Trainer(BaseTrainer):
         output = torch.Tensor(np.concatenate(outputs, axis=0))
         target = torch.Tensor(np.concatenate(targets, axis=0))
         for met in self.metric_ftns:
-            self.valid_metrics.update(met.__name__, met(output, target))
+            if "_per_class" not in met.__name__:
+                self.valid_metrics.update(met.__name__, met(output, target))
+            elif "_per_class" in met.__name__:
+                self.valid_metrics.update_per_class(met.__name__, met(output, target))
 
         # add histogram of model parameters to the tensorboard
         for name, p in self.model.named_parameters():

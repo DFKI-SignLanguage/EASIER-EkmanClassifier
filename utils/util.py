@@ -11,20 +11,24 @@ def ensure_dir(dirname):
     if not dirname.is_dir():
         dirname.mkdir(parents=True, exist_ok=False)
 
+
 def read_json(fname):
     fname = Path(fname)
     with fname.open('rt') as handle:
         return json.load(handle, object_hook=OrderedDict)
+
 
 def write_json(content, fname):
     fname = Path(fname)
     with fname.open('wt') as handle:
         json.dump(content, handle, indent=4, sort_keys=False)
 
+
 def inf_loop(data_loader):
     ''' wrapper function for endless data loader. '''
     for loader in repeat(data_loader):
         yield from loader
+
 
 def prepare_device(n_gpu_use):
     """
@@ -43,10 +47,18 @@ def prepare_device(n_gpu_use):
     list_ids = list(range(n_gpu_use))
     return device, list_ids
 
+
 class MetricTracker:
     def __init__(self, *keys, writer=None):
         self.writer = writer
+        keys_per_class = [k for k in keys if "_per_class" in k]
+        self._data_per_class = pd.DataFrame(index=keys_per_class,
+                                            columns=["class_" + str(i) + "_" + c_name for i in range(8) for c_name in
+                                                     ['total', 'counts', 'average']])
+
+        keys = [k for k in keys if "_per_class" not in k]
         self._data = pd.DataFrame(index=keys, columns=['total', 'counts', 'average'])
+
         self.reset()
 
     def reset(self):
@@ -60,8 +72,24 @@ class MetricTracker:
         self._data.counts[key] += n
         self._data.average[key] = self._data.total[key] / self._data.counts[key]
 
+    def update_per_class(self, key, data_dict, n=1):
+        if self.writer is not None:
+            self.writer.add_scalars(key, data_dict)
+        for cls_key, v in data_dict.items():
+            # cls_key = "class_" + str(k) + "_"
+            self._data_per_class[cls_key + "total"][key] += v * n
+            self._data_per_class[cls_key + "counts"][key] += n
+            self._data_per_class[cls_key + "average"][key] = self._data_per_class[cls_key + "total"] / \
+                                                             self._data_per_class[
+                                                                 cls_key + "counts"]
+
     def avg(self, key):
         return self._data.average[key]
 
     def result(self):
-        return dict(self._data.average)
+        avg = dict(self._data.average)
+        col_avg_names = ["class_" + str(i) + "_average" for i in range(8)]
+        for c_avg_name in col_avg_names:
+            avg.update(dict(self._data_per_class[c_avg_name]))
+
+        return avg

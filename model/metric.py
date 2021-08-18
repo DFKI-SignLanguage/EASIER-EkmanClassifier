@@ -27,14 +27,15 @@ def sensitivity_per_class(output, target):
         output = output.cpu().numpy()
         target = target.cpu().numpy()
 
-        cm = confusion_matrix(target, output)
+        pred = np.argmax(output, axis=1)
+        cm = confusion_matrix(target, pred)
 
         FN = cm.sum(axis=1) - np.diag(cm)
         TP = np.diag(cm)
 
         # Sensitivity, hit rate, recall, or true positive rate
         sensitivity_score = TP / (TP + FN)
-
+        sensitivity_score = {"class_" + str(i) + "_": sensitivity_score[i] for i in range(len(sensitivity_score))}
     return sensitivity_score
 
 
@@ -43,7 +44,8 @@ def specificity_per_class(output, target):
         output = output.cpu().numpy()
         target = target.cpu().numpy()
 
-        cm = confusion_matrix(target, output)
+        pred = np.argmax(output, axis=1)
+        cm = confusion_matrix(target, pred)
 
         FP = cm.sum(axis=0) - np.diag(cm)
         FN = cm.sum(axis=1) - np.diag(cm)
@@ -52,7 +54,7 @@ def specificity_per_class(output, target):
 
         # Specificity or true negative rate
         specificity_score = TN / (TN + FP)
-
+        specificity_score = {"class_" + str(i) + "_": specificity_score[i] for i in range(len(specificity_score))}
     return specificity_score
 
 
@@ -61,7 +63,8 @@ def accuracy_per_class(output, target):
         output = output.cpu().numpy()
         target = target.cpu().numpy()
 
-        cm = confusion_matrix(target, output)
+        pred = np.argmax(output, axis=1)
+        cm = confusion_matrix(target, pred)
 
         FP = cm.sum(axis=0) - np.diag(cm)
         FN = cm.sum(axis=1) - np.diag(cm)
@@ -70,7 +73,8 @@ def accuracy_per_class(output, target):
 
         # Overall accuracy
         acc_score = (TP + TN) / (TP + FP + FN + TN)
-
+        acc_score = {"class_" + str(i) + "_": acc_score[i] for i in range(len(acc_score))}
+        print(acc_score)
     return acc_score
 
 
