@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from sklearn.metrics import precision_score, recall_score, accuracy_score
+from sklearn.metrics import precision_score, recall_score, accuracy_score, confusion_matrix
 
 
 def accuracy(output, target):
@@ -20,6 +20,58 @@ def top_k_acc(output, target, k=3):
         for i in range(k):
             correct += torch.sum(pred[:, i] == target).item()
     return correct / len(target)
+
+
+def sensitivity_per_class(output, target):
+    with torch.no_grad():
+        output = output.cpu().numpy()
+        target = target.cpu().numpy()
+
+        cm = confusion_matrix(target, output)
+
+        FN = cm.sum(axis=1) - np.diag(cm)
+        TP = np.diag(cm)
+
+        # Sensitivity, hit rate, recall, or true positive rate
+        sensitivity_score = TP / (TP + FN)
+
+    return sensitivity_score
+
+
+def specificity_per_class(output, target):
+    with torch.no_grad():
+        output = output.cpu().numpy()
+        target = target.cpu().numpy()
+
+        cm = confusion_matrix(target, output)
+
+        FP = cm.sum(axis=0) - np.diag(cm)
+        FN = cm.sum(axis=1) - np.diag(cm)
+        TP = np.diag(cm)
+        TN = cm.sum() - (FP + FN + TP)
+
+        # Specificity or true negative rate
+        specificity_score = TN / (TN + FP)
+
+    return specificity_score
+
+
+def accuracy_per_class(output, target):
+    with torch.no_grad():
+        output = output.cpu().numpy()
+        target = target.cpu().numpy()
+
+        cm = confusion_matrix(target, output)
+
+        FP = cm.sum(axis=0) - np.diag(cm)
+        FN = cm.sum(axis=1) - np.diag(cm)
+        TP = np.diag(cm)
+        TN = cm.sum() - (FP + FN + TP)
+
+        # Overall accuracy
+        acc_score = (TP + TN) / (TP + FP + FN + TN)
+
+    return acc_score
 
 
 def micro_precision(output, target, threshold=0.5):
