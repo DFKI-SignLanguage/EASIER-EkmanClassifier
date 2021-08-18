@@ -64,6 +64,8 @@ class MetricTracker:
     def reset(self):
         for col in self._data.columns:
             self._data[col].values[:] = 0
+        for col in self._data_per_class.columns:
+            self._data_per_class[col].values[:] = 0
 
     def update(self, key, value, n=1):
         if self.writer is not None:
@@ -79,9 +81,8 @@ class MetricTracker:
             # cls_key = "class_" + str(k) + "_"
             self._data_per_class[cls_key + "total"][key] += v * n
             self._data_per_class[cls_key + "counts"][key] += n
-            self._data_per_class[cls_key + "average"][key] = self._data_per_class[cls_key + "total"] / \
-                                                             self._data_per_class[
-                                                                 cls_key + "counts"]
+            self._data_per_class[cls_key + "average"][key] = self._data_per_class[cls_key + "total"][key] / \
+                                                             self._data_per_class[cls_key + "counts"][key]
 
     def avg(self, key):
         return self._data.average[key]
@@ -90,6 +91,8 @@ class MetricTracker:
         avg = dict(self._data.average)
         col_avg_names = ["class_" + str(i) + "_average" for i in range(8)]
         for c_avg_name in col_avg_names:
-            avg.update(dict(self._data_per_class[c_avg_name]))
+            d = dict(self._data_per_class[c_avg_name])
+            d = {k + "_" + c_avg_name.split("_average")[0]: v for k, v in d.items()}
+            avg.update(d)
 
         return avg
