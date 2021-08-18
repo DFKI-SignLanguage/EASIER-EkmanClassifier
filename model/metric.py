@@ -74,7 +74,6 @@ def accuracy_per_class(output, target):
         # Overall accuracy
         acc_score = (TP + TN) / (TP + FP + FN + TN)
         acc_score = {"class_" + str(i) + "_": acc_score[i] for i in range(len(acc_score))}
-        print(acc_score)
     return acc_score
 
 

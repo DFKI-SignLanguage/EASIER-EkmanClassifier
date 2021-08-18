@@ -90,9 +90,17 @@ class MetricTracker:
     def result(self):
         avg = dict(self._data.average)
         col_avg_names = ["class_" + str(i) + "_average" for i in range(8)]
-        for c_avg_name in col_avg_names:
-            d = dict(self._data_per_class[c_avg_name])
-            d = {k + "_" + c_avg_name.split("_average")[0]: v for k, v in d.items()}
-            avg.update(d)
+
+        # for c_avg_name in col_avg_names:
+        #     d = dict(self._data_per_class[c_avg_name])
+        #     d = {k + "_" + c_avg_name.split("_average")[0]: v for k, v in d.items()}
+        #     avg.update(d)
+
+        keys = self._data_per_class.index.values.tolist()
+        vals = self._data_per_class[col_avg_names].values.tolist()
+        d = {}
+        for i in range(len(keys)):
+            d[keys[i]] = vals[i]
+        avg.update(d)
 
         return avg
