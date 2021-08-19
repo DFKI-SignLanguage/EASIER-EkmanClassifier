@@ -48,11 +48,8 @@ class VggModel(BaseModel):
         self.sigm = nn.Sigmoid()
 
     def forward(self, x):
-        # x = self.input(x)
         x = self.base_model(x)
-        # print(x.shape)
         out = self.sigm(x)
-        # print(".......", out.shape)
         return out
 
 
