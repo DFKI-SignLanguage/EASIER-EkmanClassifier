@@ -49,11 +49,13 @@ def prepare_device(n_gpu_use):
 
 
 class MetricTracker:
-    def __init__(self, *keys, writer=None):
+    def __init__(self, *keys, label_names, writer=None):
         self.writer = writer
+        self.label_names = label_names
+
         keys_per_class = [k for k in keys if "_per_class" in k]
         self._data_per_class = pd.DataFrame(index=keys_per_class,
-                                            columns=["class_" + str(i) + "_" + c_name for i in range(8) for c_name in
+                                            columns=[lab + "_" + col_name for lab in self.label_names for col_name in
                                                      ['total', 'counts', 'average']])
 
         keys = [k for k in keys if "_per_class" not in k]
@@ -89,12 +91,7 @@ class MetricTracker:
 
     def result(self):
         avg = dict(self._data.average)
-        col_avg_names = ["class_" + str(i) + "_average" for i in range(8)]
-
-        # for c_avg_name in col_avg_names:
-        #     d = dict(self._data_per_class[c_avg_name])
-        #     d = {k + "_" + c_avg_name.split("_average")[0]: v for k, v in d.items()}
-        #     avg.update(d)
+        col_avg_names = [lab + "_average" for lab in self.label_names]
 
         keys = self._data_per_class.index.values.tolist()
         vals = self._data_per_class[col_avg_names].values.tolist()

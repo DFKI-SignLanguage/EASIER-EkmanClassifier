@@ -22,7 +22,7 @@ def top_k_acc(output, target, k=3):
     return correct / len(target)
 
 
-def sensitivity_per_class(output, target):
+def sensitivity_per_class(output, target, label_names):
     with torch.no_grad():
         output = output.cpu().numpy()
         target = target.cpu().numpy()
@@ -35,11 +35,11 @@ def sensitivity_per_class(output, target):
 
         # Sensitivity, hit rate, recall, or true positive rate
         sensitivity_score = TP / (TP + FN)
-        sensitivity_score = {"class_" + str(i) + "_": sensitivity_score[i] for i in range(len(sensitivity_score))}
+        sensitivity_score = {label_names[i]: sensitivity_score[i] for i in range(len(sensitivity_score))}
     return sensitivity_score
 
 
-def specificity_per_class(output, target):
+def specificity_per_class(output, target, label_names):
     with torch.no_grad():
         output = output.cpu().numpy()
         target = target.cpu().numpy()
@@ -54,11 +54,11 @@ def specificity_per_class(output, target):
 
         # Specificity or true negative rate
         specificity_score = TN / (TN + FP)
-        specificity_score = {"class_" + str(i) + "_": specificity_score[i] for i in range(len(specificity_score))}
+        specificity_score = {label_names[i]: specificity_score[i] for i in range(len(specificity_score))}
     return specificity_score
 
 
-def accuracy_per_class(output, target):
+def accuracy_per_class(output, target, label_names):
     with torch.no_grad():
         output = output.cpu().numpy()
         target = target.cpu().numpy()
@@ -73,7 +73,7 @@ def accuracy_per_class(output, target):
 
         # Overall accuracy
         acc_score = (TP + TN) / (TP + FP + FN + TN)
-        acc_score = {"class_" + str(i) + "_": acc_score[i] for i in range(len(acc_score))}
+        acc_score = {label_names[i]: acc_score[i] for i in range(len(acc_score))}
     return acc_score
 
 

@@ -28,8 +28,11 @@ class Trainer(BaseTrainer):
         self.lr_scheduler = lr_scheduler
         self.log_step = int(np.sqrt(data_loader.batch_size))
 
-        self.train_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
-        self.valid_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
+        self.label_names = list(self.data_loader.dataset.label_names.values())
+        self.train_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], label_names=self.label_names,
+                                           writer=self.writer)
+        self.valid_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], label_names=self.label_names,
+                                           writer=self.writer)
 
     def _train_epoch(self, epoch):
         """
@@ -75,7 +78,7 @@ class Trainer(BaseTrainer):
             if "_per_class" not in met.__name__:
                 self.train_metrics.update(met.__name__, met(output, target))
             elif "_per_class" in met.__name__:
-                self.train_metrics.update_per_class(met.__name__, met(output, target))
+                self.train_metrics.update_per_class(met.__name__, met(output, target, self.label_names))
 
         log = self.train_metrics.result()
 
@@ -120,7 +123,7 @@ class Trainer(BaseTrainer):
             if "_per_class" not in met.__name__:
                 self.valid_metrics.update(met.__name__, met(output, target))
             elif "_per_class" in met.__name__:
-                self.valid_metrics.update_per_class(met.__name__, met(output, target))
+                self.valid_metrics.update_per_class(met.__name__, met(output, target, self.label_names))
 
         # add histogram of model parameters to the tensorboard
         for name, p in self.model.named_parameters():
