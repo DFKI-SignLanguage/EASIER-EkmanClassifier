@@ -81,10 +81,10 @@ class MetricTracker:
             self.writer.add_scalars(key, data_dict)
         for cls_key, v in data_dict.items():
             # cls_key = "class_" + str(k) + "_"
-            self._data_per_class[cls_key + "total"][key] += v * n
-            self._data_per_class[cls_key + "counts"][key] += n
-            self._data_per_class[cls_key + "average"][key] = self._data_per_class[cls_key + "total"][key] / \
-                                                             self._data_per_class[cls_key + "counts"][key]
+            self._data_per_class[cls_key + "_total"][key] += v * n
+            self._data_per_class[cls_key + "_counts"][key] += n
+            self._data_per_class[cls_key + "_average"][key] = self._data_per_class[cls_key + "_total"][key] / \
+                                                             self._data_per_class[cls_key + "_counts"][key]
 
     def avg(self, key):
         return self._data.average[key]
