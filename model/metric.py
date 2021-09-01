@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from sklearn.metrics import precision_score, recall_score, accuracy_score, confusion_matrix
+from sklearn.metrics import precision_score, recall_score, accuracy_score, confusion_matrix, balanced_accuracy_score
 
 
 def accuracy(output, target):
@@ -10,6 +10,15 @@ def accuracy(output, target):
         correct = 0
         correct += torch.sum(pred == target).item()
     return correct / len(target)
+
+
+def balanced_accuracy(output, target, threshold=0.5):
+    with torch.no_grad():
+        output = output.cpu().numpy()
+        target = target.cpu().numpy()
+        pred = np.array(output > threshold, dtype=float)
+        ba_score = balanced_accuracy_score(y_true=target, y_pred=pred, average='micro', zero_division=0)
+    return ba_score
 
 
 def top_k_acc(output, target, k=3):
