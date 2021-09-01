@@ -45,7 +45,7 @@ class FaceExpressionPhoenixDataset(Dataset):
         self.target_transform = target_transform
 
         # mlb = MultiLabelBinarizer()
-        y_df = pd.read_csv(self.y_csv_path)
+        y_df = pd.read_csv(self.y_csv_path, dtype=str)
         # Removing all data points with 'Face_not_visible' i.e no labels
         y_df.dropna(inplace=True)
         # Extracting multiple labels
@@ -96,7 +96,13 @@ class FaceExpressionPhoenixDataset(Dataset):
         class_weights = class_weight.compute_class_weight(class_weight='balanced', classes=np.unique(labels_array),
                                                           y=labels_array)
         num_classes = len(self.label_names.keys())
-        assert (class_weights.size == num_classes)
+        # assert (class_weights.size == num_classes)
+        if class_weights.size != num_classes:
+            print(
+                "Warning: Not all classes in current set. (Temp solution: Adjust validation split till this message "
+                "is not displayed)")
+            print("Out of", num_classes, " classes, missing are: ",
+                  np.setdiff1d(list(self.label_names.keys()), np.unique(labels_array)))
 
         sampler_weights = np.zeros(len(labels_array))
         for i in range(len(labels_array)):
@@ -119,5 +125,6 @@ class FaceExpressionPhoenixDataLoader(BaseDataLoader):
             transforms.Resize((224, 224)),
         ])
         self.data_dir = data_dir
-        self.dataset = FaceExpressionPhoenixDataset(data_dir, 'FePh_images', 'FePh_labels.csv', transform=trsfm)
+        # self.dataset = FaceExpressionPhoenixDataset(data_dir, 'FePh_images', 'FePh_labels.csv', transform=trsfm)
+        self.dataset = FaceExpressionPhoenixDataset(data_dir, 'FePh_images', 'FePh_test.csv', transform=trsfm)
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers, is_imbalanced_classes=True)
