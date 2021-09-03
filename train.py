@@ -1,5 +1,7 @@
 import argparse
 import collections
+import datetime
+
 import torch
 import numpy as np
 import data_loader.data_loaders as module_data
@@ -10,6 +12,7 @@ import model.model as module_arch
 from parse_config import ConfigParser
 from trainer import Trainer
 from utils import prepare_device
+from timeit import default_timer as timer
 
 # fix random seeds for reproducibility
 SEED = 123
@@ -17,6 +20,17 @@ torch.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 np.random.seed(SEED)
+
+
+def execute_and_time_fn(fn, human_readable=True):
+    start = timer()
+    fn()
+    end = timer()
+    if not human_readable:
+        time_elapsed = end - start
+    elif human_readable:
+        time_elapsed = datetime.timedelta(seconds=(end - start))
+    return time_elapsed
 
 
 def main(config):
@@ -41,7 +55,7 @@ def main(config):
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 
     # evaluator = Evaluator(config, valid_data_loader, device, metrics)
-    evaluator = Evaluator(config, data_loader, device, metrics)
+    evaluator = Evaluator(config, data_loader, device)
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
@@ -61,9 +75,23 @@ def main(config):
                       # valid_data_loader=valid_data_loader,
                       lr_scheduler=lr_scheduler)
 
+    start = timer()
     trainer.train()
+    end = timer()
+    training_time = datetime.timedelta(seconds=(end - start))
+    # training_time = execute_and_time_fn(trainer.train)
 
-    evaluator.evaluate_model(model)
+    evaluator.training_time = training_time
+
+    start = timer()
+    evaluator.evaluate_model(model, "validation")
+    end = timer()
+    prediction_time = datetime.timedelta(seconds=(end - start))
+    # prediction_time = execute_and_time_fn(evaluator.evaluate_model(model))
+
+    evaluator.val_pred_time = prediction_time
+
+    evaluator.save(type_eval="validation")
 
 
 if __name__ == '__main__':

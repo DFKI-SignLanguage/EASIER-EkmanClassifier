@@ -16,8 +16,8 @@ def balanced_accuracy(output, target, threshold=0.5):
     with torch.no_grad():
         output = output.cpu().numpy()
         target = target.cpu().numpy()
-        pred = np.array(output > threshold, dtype=float)
-        ba_score = balanced_accuracy_score(y_true=target, y_pred=pred, average='micro', zero_division=0)
+        pred = np.argmax(output, axis=1)
+        ba_score = balanced_accuracy_score(y_true=target, y_pred=pred)
     return ba_score
 
 
