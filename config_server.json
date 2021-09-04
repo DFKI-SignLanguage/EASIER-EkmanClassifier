@@ -51,7 +51,8 @@
     "evaluation_store": {
     "type": "Evaluator",
     "args": {
-      "save_dir": "/netscratch/bhuvaneshwara/saved/"
+      "save_dir": "/netscratch/bhuvaneshwara/saved/",
+      "training": true
     },
     "metrics": [
       "accuracy",

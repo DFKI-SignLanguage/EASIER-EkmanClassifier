@@ -71,6 +71,5 @@ if __name__ == '__main__':
 
     config = ConfigParser.from_args(args)
 
-    # Hard coding to False in test script
-    config["data_loader"]["args"]["training"] = False
+    # config["data_loader"]["args"]["training"] = False
     main(config)
