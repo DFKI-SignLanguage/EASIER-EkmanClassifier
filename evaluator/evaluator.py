@@ -17,7 +17,7 @@ class Evaluator:
                              "Hyper-params", "Epochs", "Validation set split",
                              "Validation Accuracy", "Validation Balanced Accuracy",
                              "Test set split", "Test Accuracy", "Test Balanced Accuracy",
-                             "se anger", "se contempt", "se disgust", "se fear", "se happiness", "se sadness",
+                             "se anger", "se none", "se disgust", "se fear", "se happy", "se sad",
                              "se surprise",
                              "se neutral",
                              "Total Training time", "Validation Prediction Time", "Test Prediction Time", "TensorBoard"]
@@ -112,11 +112,11 @@ class Evaluator:
                 "Test Accuracy": self.metrics_results["accuracy"],
                 "Test Balanced Accuracy": self.metrics_results["balanced_accuracy"],
                 "se anger": self.metrics_results["sensitivity_per_class"]["anger"],
-                "se contempt": self.metrics_results["sensitivity_per_class"]["contempt"],
+                "se none": self.metrics_results["sensitivity_per_class"]["none"],
                 "se disgust": self.metrics_results["sensitivity_per_class"]["disgust"],
                 "se fear": self.metrics_results["sensitivity_per_class"]["fear"],
-                "se happiness": self.metrics_results["sensitivity_per_class"]["happiness"],
-                "se sadness": self.metrics_results["sensitivity_per_class"]["sadness"],
+                "se happy": self.metrics_results["sensitivity_per_class"]["happy"],
+                "se sad": self.metrics_results["sensitivity_per_class"]["sad"],
                 "se surprise": self.metrics_results["sensitivity_per_class"]["surprise"],
                 "se neutral": self.metrics_results["sensitivity_per_class"]["neutral"],
                 "Test Prediction Time": self.pred_time

@@ -8,6 +8,11 @@ from parse_config import ConfigParser
 from timeit import default_timer as timer
 from evaluator.evaluator import Evaluator
 import datetime
+#TODO Find solution for PosixPath and WindowsPath
+# when model is trained on Linux, it expects a PosixPath to load on Windows as well and vice versa
+import pathlib
+temp = pathlib.PosixPath
+pathlib.PosixPath = pathlib.WindowsPath
 
 
 def main(config):
@@ -28,14 +33,14 @@ def main(config):
     logger.info(model)
 
     logger.info('Loading checkpoint: {} ...'.format(config.resume))
-    checkpoint = torch.load(config.resume)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    checkpoint = torch.load(config.resume, map_location=device)
     state_dict = checkpoint['state_dict']
     if config['n_gpu'] > 1:
         model = torch.nn.DataParallel(model)
     model.load_state_dict(state_dict)
 
     # prepare model for testing
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
     model.eval()
 
@@ -65,4 +70,7 @@ if __name__ == '__main__':
                       help='indices of GPUs to enable (default: all)')
 
     config = ConfigParser.from_args(args)
+
+    # Hard coding to False in test script
+    config["data_loader"]["args"]["training"] = False
     main(config)
