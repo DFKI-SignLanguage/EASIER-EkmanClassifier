@@ -1,7 +1,8 @@
 import os
 import pandas as pd
 
-data_path = "C:\\Users\\chira\\OneDrive - uni-saarland.de\\Codebases\\DFKI_HiWi\\ACG\\Easier\\Datasets\\FePh"
+# data_path = "C:\\Users\\chira\\OneDrive - uni-saarland.de\\Codebases\\DFKI_HiWi\\ACG\\Easier\\Datasets\\FePh"
+data_path = "/ds/images/FaceExpressionPhoenix"
 x_dir_path = os.path.join(data_path, 'FePh_images')
 y_csv_path = os.path.join(data_path, 'FePh_labels.csv')
 test_set_fraction = 0.2  # Fraction of FePh_labels.csv to use for test set
