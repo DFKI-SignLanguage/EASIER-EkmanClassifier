@@ -27,7 +27,8 @@ class MnistDataLoader(BaseDataLoader):
 
 class FaceExpressionPhoenixDataset(Dataset):
 
-    def __init__(self, data_path, x_dir, y_csv, transform=None, target_transform=None):
+    # def __init__(self, data_path, images_dir, labels_csv, transform=None, target_transform=None):
+    def __init__(self, data_path, training=True, transform=None, target_transform=None):
 
         # https://www.researchgate.net/publication/340049545_Facial_Expression_Phoenix_FePh_An_Annotated_Sequenced_Dataset_for_Facial_and_Emotion-Specified_Expressions_in_Sign_Language
         self.label_names = {0: "neutral",
@@ -39,13 +40,19 @@ class FaceExpressionPhoenixDataset(Dataset):
                             6: "surprise",
                             7: "none"}
         self.data_path = data_path
-        self.x_dir_path = os.path.join(data_path, x_dir)
-        self.y_csv_path = os.path.join(data_path, y_csv)
+        self.images_dir_path = os.path.join(data_path, 'FePh_images')
+
+        if training:
+            self.labels_csv_path = os.path.join(data_path, 'FePh_train.csv')
+            # self.labels_csv_path = os.path.join(data_path, 'FePh_test.csv')
+        else:
+            self.labels_csv_path = os.path.join(data_path, 'FePh_test.csv')
+
         self.transform = transform
         self.target_transform = target_transform
 
         # mlb = MultiLabelBinarizer()
-        y_df = pd.read_csv(self.y_csv_path, dtype=str)
+        y_df = pd.read_csv(self.labels_csv_path, dtype=str)
         # Removing all data points with 'Face_not_visible' i.e no labels
         y_df.dropna(inplace=True)
         # Extracting multiple labels
@@ -53,7 +60,8 @@ class FaceExpressionPhoenixDataset(Dataset):
         y_df['num_labels'] = y_df['Facial_label'].apply(lambda x: len(x))
         # Removing all data points with more than one labels ==> Ambiguous
         y_df = y_df[y_df["num_labels"] == 1]
-        self.image_inputs = y_df['External ID'].apply(lambda img_name: os.path.join(self.x_dir_path, img_name)).tolist()
+        self.image_inputs = y_df['External ID'].apply(
+            lambda img_name: os.path.join(self.images_dir_path, img_name)).tolist()
 
         # self.labels = mlb.fit_transform(y_df['Facial_label'].to_numpy())
         self.labels = y_df['Facial_label'].apply(lambda x: x[0]).to_numpy()
@@ -125,6 +133,6 @@ class FaceExpressionPhoenixDataLoader(BaseDataLoader):
             transforms.Resize((224, 224)),
         ])
         self.data_dir = data_dir
-        # self.dataset = FaceExpressionPhoenixDataset(data_dir, 'FePh_images', 'FePh_labels.csv', transform=trsfm)
-        self.dataset = FaceExpressionPhoenixDataset(data_dir, 'FePh_images', 'FePh_test.csv', transform=trsfm)
+
+        self.dataset = FaceExpressionPhoenixDataset(data_dir, training=training, transform=trsfm)
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers, is_imbalanced_classes=True)
