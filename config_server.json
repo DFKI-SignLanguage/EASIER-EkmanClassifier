@@ -12,7 +12,8 @@
       "batch_size": 64,
       "shuffle": true,
       "validation_split": 0.1,
-      "num_workers": 2
+      "num_workers": 2,
+      "training": true
     }
   },
   "optimizer": {
@@ -46,5 +47,16 @@
     "monitor": "min val_loss",
     "early_stop": 10,
     "tensorboard": true
+  },
+    "evaluation_store": {
+    "type": "Evaluator",
+    "args": {
+      "save_dir": "/netscratch/bhuvaneshwara/saved/"
+    },
+    "metrics": [
+      "accuracy",
+      "balanced_accuracy",
+      "sensitivity_per_class"
+    ]
   }
 }

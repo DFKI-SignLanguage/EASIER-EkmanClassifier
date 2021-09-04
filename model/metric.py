@@ -12,7 +12,7 @@ def accuracy(output, target):
     return correct / len(target)
 
 
-def balanced_accuracy(output, target, threshold=0.5):
+def balanced_accuracy(output, target):
     with torch.no_grad():
         output = output.cpu().numpy()
         target = target.cpu().numpy()
@@ -109,6 +109,5 @@ def multilabel_accuracy(output, target, threshold=0.5):
         output = output.cpu().numpy()
         target = target.cpu().numpy()
         pred = np.array(output > threshold, dtype=float)
-        # a_score = accuracy_score(y_true=target, y_pred=output)
         a_score = accuracy_score(y_true=target, y_pred=pred)
     return a_score

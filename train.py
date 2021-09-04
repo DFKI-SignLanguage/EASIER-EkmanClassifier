@@ -54,7 +54,7 @@ def main(config):
     criterion = getattr(module_loss, config['loss'])
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 
-    # evaluator = Evaluator(config, valid_data_loader, device, metrics)
+    # set up evaluator that can save train, val and test evaluation results
     evaluator = Evaluator(config, data_loader, device)
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler
@@ -62,12 +62,6 @@ def main(config):
     optimizer = config.init_obj('optimizer', torch.optim, trainable_params)
     lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
 
-    # trainer = Trainer(model, criterion, metrics, optimizer,
-    #                   config=config,
-    #                   device=device,
-    #                   data_loader=data_loader,
-    #                   valid_data_loader=valid_data_loader,
-    #                   lr_scheduler=lr_scheduler)
     trainer = Trainer(model, criterion, metrics, optimizer,
                       config=config,
                       device=device,
@@ -79,17 +73,15 @@ def main(config):
     trainer.train()
     end = timer()
     training_time = datetime.timedelta(seconds=(end - start))
-    # training_time = execute_and_time_fn(trainer.train)
 
     evaluator.training_time = training_time
 
     start = timer()
-    evaluator.evaluate_model(model, "validation")
+    evaluator.evaluate_model(model)
     end = timer()
     prediction_time = datetime.timedelta(seconds=(end - start))
-    # prediction_time = execute_and_time_fn(evaluator.evaluate_model(model))
 
-    evaluator.val_pred_time = prediction_time
+    evaluator.pred_time = prediction_time
 
     evaluator.save(type_eval="validation")
 

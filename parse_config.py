@@ -40,7 +40,8 @@ class ConfigParser:
         self.save_dir.mkdir(parents=True, exist_ok=exist_ok)
         self.log_dir.mkdir(parents=True, exist_ok=exist_ok)
 
-        self.save_eval_dir.mkdir(parents=True, exist_ok=exist_ok)
+        if self.config["data_loader"]["args"]["training"]:
+            self.save_eval_dir.mkdir(parents=True, exist_ok=exist_ok)
 
         # save updated config file to the checkpoint dir
         write_json(self.config, self.save_dir / 'config.json')
