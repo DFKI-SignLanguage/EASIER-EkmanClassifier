@@ -40,7 +40,7 @@
     }
   },
   "trainer": {
-    "epochs": 30,
+    "epochs": 2,
     "save_dir": "/netscratch/bhuvaneshwara/saved/",
     "save_period": 1,
     "verbosity": 2,
