@@ -84,3 +84,13 @@ Ex: `python test.py -c config.json -r saved/models/Resnet50/0904_190852/checkpoi
 2 . Early stopping does not seem to be working even though it is mentioned as an implemented feature in original template.
 
 3 . New model, log and eval dirs are being created even during testing (i.e dirs that contain no new info)
+
+4 . Model loading problem. If model trained on Linux, and an attempt is made to load model on Windows, it leads to error 
+because the model also saves the class type of the Pathlib class and expects the same when loading.
+
+Temp Workaround in `test.py` where model is loaded:
+```python
+import pathlib
+temp = pathlib.PosixPath
+pathlib.PosixPath = pathlib.WindowsPath
+  ```
