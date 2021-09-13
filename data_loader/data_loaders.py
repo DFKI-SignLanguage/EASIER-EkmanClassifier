@@ -2,9 +2,9 @@ import torch
 from torchvision import datasets, transforms
 from base import BaseDataLoader
 import os
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 import pandas as pd
-# from sklearn.preprocessing import MultiLabelBinarizer
+import glob
 from sklearn.utils import class_weight
 import numpy as np
 from PIL import Image
@@ -136,3 +136,106 @@ class FaceExpressionPhoenixDataLoader(BaseDataLoader):
 
         self.dataset = FaceExpressionPhoenixDataset(data_dir, training=training, transform=trsfm)
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers, is_imbalanced_classes=True)
+
+
+
+# ---------------------- AffectNet Dataset & DataLoader ---------------------- #
+
+class AffectNet(Dataset):
+    def __init__(self, data_path, transform=None):
+        self.transform = transform
+        self.images = glob.glob(os.path.join(data_path,'images/*.jpg'))
+        self.transform = transform
+        self.data_path = data_path
+
+        cache_file = os.path.join(data_path,"expressions_cache.npy")
+        # check if labels cache exists
+        if not os.path.exists(cache_file):
+            labels = []
+            for im in self.images:
+                base = Path(im).stem
+                exp = np.load(os.path.join(self.data_path,'annotations',base+"_exp.npy"))
+                labels.append(int(exp))
+            np.save(cache_file,labels)
+
+        self.labels = np.load(cache_file)
+        self.num_classes = 8
+
+
+    def get_sampler_weights(self):
+        print("Calculating sampler weights...")
+        labels_array = self.labels
+        class_weights = class_weight.compute_class_weight(class_weight='balanced', classes=np.unique(labels_array),
+                                                          y=labels_array)
+        num_classes = len(self.label_names.keys())
+
+        assert(class_weights.size == num_classes)
+
+        sampler_weights = np.zeros(len(labels_array))
+        for i in range(len(labels_array)):
+            sampler_weights[i] = class_weights[int(labels_array[i])]
+
+        return sampler_weights
+
+
+    def __len__(self):
+        return len(self.images)
+
+
+    def __getitem__(self, index):
+        im = Image.open(self.images[index]).convert('RGB')
+
+        base = Path(self.images[index]).stem
+        exp = int(np.load(os.path.join(self.data_path,'annotations',base+"_exp.npy")))
+
+        if self.transform is not None:
+            im = self.transform(im)
+
+        return im, exp
+
+
+class AffectNetDataLoader(DataLoader):
+    """
+    AffectNet data loading demo using DataLoader
+    """
+
+    def __init__(self, data_dir, val_data_dir, batch_size, shuffle=True, num_workers=1):
+        trsfm = transforms.Compose([
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(), 
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+
+        self.dataset = AffectNet(data_dir, transform=trsfm)
+        self.val_dataset = AffectNet(val_data_dir, transform=trsfm)
+
+        self.shuffle = shuffle
+
+        self.val_data_dir = val_data_dir
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+
+        weights = self.dataset.get_sampler_weights()
+        train_sampler = torch.utils.data.sampler.WeightedRandomSampler(weights=weights.double(),
+                                                                       num_samples=len(dataset))
+
+        self.init_kwargs = {
+            'dataset': self.dataset,
+            'batch_size': self.batch_size,
+            'shuffle': self.shuffle,
+            'num_workers': self.num_workers,
+        }
+
+
+        super().__init__(sampler=self.sampler, **self.init_kwargs)
+
+
+    def split_validation(self):
+
+        init_kwargs = {
+            'batch_size': self.batch_size,
+            'shuffle': False,
+            'num_workers': self.num_workers,
+        }
+
+        return DataLoader(dataset=self.val_dataset, **init_kwargs)
