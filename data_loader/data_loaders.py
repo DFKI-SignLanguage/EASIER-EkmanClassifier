@@ -8,7 +8,7 @@ import glob
 from sklearn.utils import class_weight
 import numpy as np
 from PIL import Image
-
+from pathlib import Path
 
 class MnistDataLoader(BaseDataLoader):
     """
@@ -148,6 +148,15 @@ class AffectNet(Dataset):
         self.transform = transform
         self.data_path = data_path
 
+        self.label_names = {0: "neutral",
+                            1: "happy",
+                            2: "sad",
+                            3: "surprise",
+                            4: "fear",
+                            5: "disgust",
+                            6: "anger",
+                            7: "contempt"}
+
         cache_file = os.path.join(data_path,"expressions_cache.npy")
         # check if labels cache exists
         if not os.path.exists(cache_file):
@@ -206,6 +215,8 @@ class AffectNetDataLoader(DataLoader):
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
 
+        self.validation_split = 0
+
         self.dataset = AffectNet(data_dir, transform=trsfm)
         self.val_dataset = AffectNet(val_data_dir, transform=trsfm)
 
@@ -216,18 +227,18 @@ class AffectNetDataLoader(DataLoader):
         self.num_workers = num_workers
 
         weights = self.dataset.get_sampler_weights()
-        train_sampler = torch.utils.data.sampler.WeightedRandomSampler(weights=weights.double(),
-                                                                       num_samples=len(dataset))
+        train_sampler = torch.utils.data.sampler.WeightedRandomSampler(weights=torch.DoubleTensor(weights),
+                                                                       num_samples=len(self.dataset))
 
         self.init_kwargs = {
             'dataset': self.dataset,
             'batch_size': self.batch_size,
-            'shuffle': self.shuffle,
+            'shuffle': False,
             'num_workers': self.num_workers,
         }
 
 
-        super().__init__(sampler=self.sampler, **self.init_kwargs)
+        super().__init__(sampler=train_sampler, **self.init_kwargs)
 
 
     def split_validation(self):

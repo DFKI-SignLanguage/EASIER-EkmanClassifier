@@ -40,6 +40,9 @@ def main(config):
     data_loader = config.init_obj('data_loader', module_data)
     valid_data_loader = data_loader.split_validation()
 
+    # print(len(valid_data_loader.dataset))
+    # raise
+
     # build model architecture, then print to console
     model = config.init_obj('arch', module_arch)
     logger.info(model)
