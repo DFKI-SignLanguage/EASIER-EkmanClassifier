@@ -63,6 +63,9 @@ class ConfigParser:
             args.add_argument(*opt.flags, default=None, type=opt.type)
         if not isinstance(args, tuple):
             args = args.parse_args()
+            # making the -m or --model flag (predict.py) compatible with -r or --resume (train.py & test.py)
+            if args.predict:
+                args.resume = args.model
 
         if args.device is not None:
             os.environ["CUDA_VISIBLE_DEVICES"] = args.device
@@ -79,6 +82,16 @@ class ConfigParser:
         if args.config and resume:
             # update new config for fine-tuning
             config.update(read_json(args.config))
+
+        if args.predict:
+            predictor = {
+                "predictor":
+                    {
+                        "in_dir": args.input,
+                        "out_dir": args.output,
+                    }
+            }
+            config.update(predictor)
 
         # parse custom cli options into dictionary
         modification = {opt.target: getattr(args, _get_opt_name(opt.flags)) for opt in options}
