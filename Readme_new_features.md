@@ -94,3 +94,5 @@ import pathlib
 temp = pathlib.PosixPath
 pathlib.PosixPath = pathlib.WindowsPath
   ```
+
+5. On Mac OS, data loader requires `num_workers=0`. Solution kills parallel computing and may slow down data loading. 

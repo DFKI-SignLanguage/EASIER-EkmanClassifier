@@ -31,6 +31,7 @@ class FaceExpressionPhoenixDataset(Dataset):
     def __init__(self, data_path, training=True, transform=None, target_transform=None):
 
         # https://www.researchgate.net/publication/340049545_Facial_Expression_Phoenix_FePh_An_Annotated_Sequenced_Dataset_for_Facial_and_Emotion-Specified_Expressions_in_Sign_Language
+        # TODO convert labels to list similar to classes in mnist class
         self.label_names = {0: "neutral",
                             1: "anger",
                             2: "disgust",
@@ -136,3 +137,34 @@ class FaceExpressionPhoenixDataLoader(BaseDataLoader):
 
         self.dataset = FaceExpressionPhoenixDataset(data_dir, training=training, transform=trsfm)
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers, is_imbalanced_classes=True)
+
+
+class PredictionDataset(Dataset):
+    def __init__(self, data_path):
+        # https://www.researchgate.net/publication/340049545_Facial_Expression_Phoenix_FePh_An_Annotated_Sequenced_Dataset_for_Facial_and_Emotion-Specified_Expressions_in_Sign_Language
+        # TODO convert labels to list similar to classes in mnist class
+        self.label_names = {0: "neutral",
+                            1: "anger",
+                            2: "disgust",
+                            3: "fear",
+                            4: "happy",
+                            5: "sad",
+                            6: "surprise",
+                            7: "none"}
+        self.images_dir_path = os.path.join(data_path)
+        self.image_inputs = [os.path.join(self.images_dir_path, img_name) for img_name in
+                             os.listdir(self.images_dir_path)]
+
+    def __getitem__(self, idx):
+        inp_img_name = self.image_inputs[idx]
+        in_image = Image.open(inp_img_name)
+
+        tensor_trsnfrm = transforms.ToTensor()
+        in_image = tensor_trsnfrm(in_image)
+
+        return in_image
+
+    def __len__(self):
+        return len(self.image_inputs)
+
+

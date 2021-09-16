@@ -10,9 +10,9 @@ from evaluator.evaluator import Evaluator
 import datetime
 #TODO Find solution for PosixPath and WindowsPath
 # when model is trained on Linux, it expects a PosixPath to load on Windows as well and vice versa
-import pathlib
-temp = pathlib.PosixPath
-pathlib.PosixPath = pathlib.WindowsPath
+# import pathlib
+# temp = pathlib.PosixPath
+# pathlib.PosixPath = pathlib.WindowsPath
 
 
 def main(config):
@@ -25,7 +25,7 @@ def main(config):
         shuffle=False,
         validation_split=0.0,
         training=False,
-        num_workers=2
+        num_workers=0
     )
 
     # build model architecture
