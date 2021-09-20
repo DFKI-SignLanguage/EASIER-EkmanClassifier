@@ -1,4 +1,5 @@
 import collections
+import numpy as np
 from tqdm import tqdm
 import argparse
 import torch
@@ -75,8 +76,6 @@ def main(config):
     data_loader = DataLoader(pred_dataset, batch_size=1,
                              shuffle=False, num_workers=0)
 
-    pred_df = pd.DataFrame()
-
     # build model architecture
     model = config.init_obj('arch', module_arch)
     logger.info(model)
@@ -100,14 +99,27 @@ def main(config):
     total_loss = 0.0
     total_metrics = torch.zeros(len(metric_fns))
 
+    predictions = []
+    img_names = []
     with torch.no_grad():
-        for i, (data) in enumerate(tqdm(data_loader)):
+        for i, (data, img_name) in enumerate(tqdm(data_loader)):
             data = data.to(device)
             output = model(data)
+            output = output.cpu().numpy()
+            output = np.argmax(output, axis=1)
+            predictions.append(output)
 
-            #
-            # save sample images, or do something with output here
-            #
+            if type(img_name) == tuple:
+                img_name = img_name[0]
+            img_names.append(img_name)
+
+    predictions = np.array(predictions).ravel()
+
+    pred_df = pd.DataFrame(data={
+        "ImageNames": img_names,
+        "Predictions": predictions
+    })
+    pred_df.to_csv(config["predictor"]["out_dir"])
 
 
 if __name__ == '__main__':

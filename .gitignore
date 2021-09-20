@@ -112,3 +112,5 @@ datasets/
 __MACOSX/
 
 config_temp.json
+
+*.csv

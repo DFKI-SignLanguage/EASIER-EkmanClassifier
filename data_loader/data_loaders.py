@@ -162,9 +162,9 @@ class PredictionDataset(Dataset):
         tensor_trsnfrm = transforms.ToTensor()
         in_image = tensor_trsnfrm(in_image)
 
-        return in_image
+        img_name = os.path.split(inp_img_name)[1]
+        print(img_name)
+        return in_image, img_name
 
     def __len__(self):
         return len(self.image_inputs)
-
-
