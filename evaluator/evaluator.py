@@ -26,6 +26,8 @@ class Evaluator:
         self.label_names = self.data_loader.dataset.label_names
         self.device = device
         self.loss_fn = getattr(module_loss, config['loss'])
+
+        #TODO load metric ftns from static. No need for config
         self.metric_ftns = [getattr(module_metric, met) for met in config['evaluation_store']['metrics']]
         self._save_dir = config.save_eval_dir
         self.config = config
@@ -64,6 +66,7 @@ class Evaluator:
         output = torch.Tensor(np.concatenate(outputs, axis=0))
         target = torch.Tensor(np.concatenate(targets, axis=0))
         for met in self.metric_ftns:
+            # TODO Convert list of per class values from _per_class metric ftns to dict outside the metrics ftns
             if "_per_class" not in met.__name__:
                 metrics.update({met.__name__: met(output, target)})
             elif "_per_class" in met.__name__:
