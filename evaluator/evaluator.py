@@ -23,7 +23,7 @@ class Evaluator:
                              "Total Training time", "Validation Prediction Time", "Test Prediction Time", "TensorBoard"]
         self.eval_df = pd.DataFrame(columns=self.eval_columns)
         self.data_loader = data_loader
-        self.label_names = self.data_loader.dataset.label_names
+        self.label_names = self.data_loader.dataset.idx_to_class
         self.device = device
         self.loss_fn = getattr(module_loss, config['loss'])
 

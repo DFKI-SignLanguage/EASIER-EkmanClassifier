@@ -28,7 +28,7 @@ class Trainer(BaseTrainer):
         self.lr_scheduler = lr_scheduler
         self.log_step = int(np.sqrt(data_loader.batch_size))
 
-        self.label_names = list(self.data_loader.dataset.label_names.values())
+        self.label_names = list(self.data_loader.dataset.idx_to_class.values())
         self.train_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], label_names=self.label_names,
                                            writer=self.writer)
         self.valid_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], label_names=self.label_names,

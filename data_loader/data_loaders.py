@@ -9,6 +9,18 @@ from sklearn.utils import class_weight
 import numpy as np
 from PIL import Image
 
+# Classes expected to be in the first round of annotation on the EASIER project.
+EASIER_CLASSES = {
+    0: "Happiness",
+    1: "Sadness",
+    2: "Surprise",
+    3: "Fear",
+    4: "Anger",
+    5: "Disgust",
+    6: "Contempt",
+    7: "Other"
+}
+
 
 class MnistDataLoader(BaseDataLoader):
     """
@@ -26,20 +38,23 @@ class MnistDataLoader(BaseDataLoader):
 
 
 class FaceExpressionPhoenixDataset(Dataset):
+    idx_to_class = {0: "neutral",
+                    1: "anger",
+                    2: "disgust",
+                    3: "fear",
+                    4: "happy",
+                    5: "sad",
+                    6: "surprise",
+                    7: "none"}
 
-    # def __init__(self, data_path, images_dir, labels_csv, transform=None, target_transform=None):
     def __init__(self, data_path, training=True, transform=None, target_transform=None):
 
         # https://www.researchgate.net/publication/340049545_Facial_Expression_Phoenix_FePh_An_Annotated_Sequenced_Dataset_for_Facial_and_Emotion-Specified_Expressions_in_Sign_Language
-        # TODO convert labels to list similar to classes in mnist class
-        self.label_names = {0: "neutral",
-                            1: "anger",
-                            2: "disgust",
-                            3: "fear",
-                            4: "happy",
-                            5: "sad",
-                            6: "surprise",
-                            7: "none"}
+        # TODO Report that self.classes and self.idx_to_class will be the standard way for storing label maps in all
+        #  custom datasets in this project
+        # self.classes = ["neutral", "anger", "disgust", "fear", "happy", "sad", "surprise", "none"]
+        # self.idx_to_class = {i: self.classes[i] for i in range(len(self.classes))}
+
         self.data_path = data_path
         self.images_dir_path = os.path.join(data_path, 'FePh_images')
 
@@ -52,7 +67,6 @@ class FaceExpressionPhoenixDataset(Dataset):
         self.transform = transform
         self.target_transform = target_transform
 
-        # mlb = MultiLabelBinarizer()
         y_df = pd.read_csv(self.labels_csv_path, dtype=str)
         # Removing all data points with 'Face_not_visible' i.e no labels
         y_df.dropna(inplace=True)
@@ -64,7 +78,6 @@ class FaceExpressionPhoenixDataset(Dataset):
         self.image_inputs = y_df['External ID'].apply(
             lambda img_name: os.path.join(self.images_dir_path, img_name)).tolist()
 
-        # self.labels = mlb.fit_transform(y_df['Facial_label'].to_numpy())
         self.labels = y_df['Facial_label'].apply(lambda x: x[0]).to_numpy()
 
     def __len__(self):
@@ -104,20 +117,23 @@ class FaceExpressionPhoenixDataset(Dataset):
         labels_array = self.labels[idxs]
         class_weights = class_weight.compute_class_weight(class_weight='balanced', classes=np.unique(labels_array),
                                                           y=labels_array)
-        num_classes = len(self.label_names.keys())
+        num_classes = len(self.idx_to_class.keys())
         # assert (class_weights.size == num_classes)
         if class_weights.size != num_classes:
             print(
                 "Warning: Not all classes in current set. (Temp solution: Adjust validation split till this message "
                 "is not displayed)")
             print("Out of", num_classes, " classes, missing are: ",
-                  np.setdiff1d(list(self.label_names.keys()), np.unique(labels_array)))
+                  np.setdiff1d(list(self.idx_to_class.keys()), np.unique(labels_array)))
 
         sampler_weights = np.zeros(len(labels_array))
         for i in range(len(labels_array)):
             sampler_weights[i] = class_weights[int(labels_array[i])]
 
         return sampler_weights
+
+    def get_label_map(self):
+        return self.idx_to_class
 
 
 class FaceExpressionPhoenixDataLoader(BaseDataLoader):
@@ -138,32 +154,36 @@ class FaceExpressionPhoenixDataLoader(BaseDataLoader):
         self.dataset = FaceExpressionPhoenixDataset(data_dir, training=training, transform=trsfm)
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers, is_imbalanced_classes=True)
 
+    @staticmethod
+    def get_label_map():
+        return FaceExpressionPhoenixDataset.idx_to_class
+
 
 class PredictionDataset(Dataset):
-    def __init__(self, data_path):
+    def __init__(self, data_path, data_loader):
         # https://www.researchgate.net/publication/340049545_Facial_Expression_Phoenix_FePh_An_Annotated_Sequenced_Dataset_for_Facial_and_Emotion-Specified_Expressions_in_Sign_Language
         # TODO convert labels to list similar to classes in mnist class
-        self.label_names = {0: "neutral",
-                            1: "anger",
-                            2: "disgust",
-                            3: "fear",
-                            4: "happy",
-                            5: "sad",
-                            6: "surprise",
-                            7: "none"}
+        try:
+            self.idx_to_class = data_loader.get_label_map()
+        except AttributeError:
+            raise AttributeError("Implement a get_label_map() static method similar to FaceExtractionPhoenixDataset")
+
         self.images_dir_path = os.path.join(data_path)
         self.image_inputs = [os.path.join(self.images_dir_path, img_name) for img_name in
-                             os.listdir(self.images_dir_path)]
+                             sorted(os.listdir(self.images_dir_path))]
+        print(self.image_inputs)
 
     def __getitem__(self, idx):
         inp_img_name = self.image_inputs[idx]
         in_image = Image.open(inp_img_name)
 
+        size = 224, 224    # Fixed to Resnet input size
+        in_image.thumbnail(size, Image.ANTIALIAS)
+
         tensor_trsnfrm = transforms.ToTensor()
         in_image = tensor_trsnfrm(in_image)
 
         img_name = os.path.split(inp_img_name)[1]
-        print(img_name)
         return in_image, img_name
 
     def __len__(self):
