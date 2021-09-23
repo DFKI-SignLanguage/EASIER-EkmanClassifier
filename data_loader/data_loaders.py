@@ -38,6 +38,8 @@ class MnistDataLoader(BaseDataLoader):
 
 
 class FaceExpressionPhoenixDataset(Dataset):
+    # TODO Report that self.classes and self.idx_to_class will be the standard way for storing label maps in all
+    #  custom datasets in this project
     idx_to_class = {0: "neutral",
                     1: "anger",
                     2: "disgust",
@@ -50,11 +52,6 @@ class FaceExpressionPhoenixDataset(Dataset):
     def __init__(self, data_path, training=True, transform=None, target_transform=None):
 
         # https://www.researchgate.net/publication/340049545_Facial_Expression_Phoenix_FePh_An_Annotated_Sequenced_Dataset_for_Facial_and_Emotion-Specified_Expressions_in_Sign_Language
-        # TODO Report that self.classes and self.idx_to_class will be the standard way for storing label maps in all
-        #  custom datasets in this project
-        # self.classes = ["neutral", "anger", "disgust", "fear", "happy", "sad", "surprise", "none"]
-        # self.idx_to_class = {i: self.classes[i] for i in range(len(self.classes))}
-
         self.data_path = data_path
         self.images_dir_path = os.path.join(data_path, 'FePh_images')
 
@@ -162,7 +159,6 @@ class FaceExpressionPhoenixDataLoader(BaseDataLoader):
 class PredictionDataset(Dataset):
     def __init__(self, data_path, data_loader):
         # https://www.researchgate.net/publication/340049545_Facial_Expression_Phoenix_FePh_An_Annotated_Sequenced_Dataset_for_Facial_and_Emotion-Specified_Expressions_in_Sign_Language
-        # TODO convert labels to list similar to classes in mnist class
         try:
             self.idx_to_class = data_loader.get_label_map()
         except AttributeError:
@@ -171,13 +167,12 @@ class PredictionDataset(Dataset):
         self.images_dir_path = os.path.join(data_path)
         self.image_inputs = [os.path.join(self.images_dir_path, img_name) for img_name in
                              sorted(os.listdir(self.images_dir_path))]
-        print(self.image_inputs)
 
     def __getitem__(self, idx):
         inp_img_name = self.image_inputs[idx]
         in_image = Image.open(inp_img_name)
 
-        size = 224, 224    # Fixed to Resnet input size
+        size = 224, 224  # Fixed to Resnet input size
         in_image.thumbnail(size, Image.ANTIALIAS)
 
         tensor_trsnfrm = transforms.ToTensor()
