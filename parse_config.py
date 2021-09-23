@@ -64,8 +64,9 @@ class ConfigParser:
         if not isinstance(args, tuple):
             args = args.parse_args()
             # making the -m or --model flag (predict.py) compatible with -r or --resume (train.py & test.py)
-            if args.predict:
+            if hasattr(args, "predict"):
                 args.resume = args.model
+
 
         if args.device is not None:
             os.environ["CUDA_VISIBLE_DEVICES"] = args.device
@@ -83,7 +84,7 @@ class ConfigParser:
             # update new config for fine-tuning
             config.update(read_json(args.config))
 
-        if args.predict:
+        if hasattr(args, "predict"):
             predictor = {
                 "predictor":
                     {
