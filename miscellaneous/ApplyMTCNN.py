@@ -48,7 +48,7 @@ def convert_images(in_dir: str, out_dir: str, tolerant: bool) -> None:
         depth = img_np.shape[2]
         if depth == 4:
             # Drop the alpha channel
-            print("Dropping alpha channel...")
+            print("WARNING: Dropping alpha channel...")
             img_np = img_np[:, :, :3]
             # PIL.Image.fromarray(img_np, 'RGB').save("after_alpha.png")
         elif depth == 3:
@@ -62,7 +62,7 @@ def convert_images(in_dir: str, out_dir: str, tolerant: bool) -> None:
 
         # No faces?
         if len(face_list) == 0:
-            print("Warning: no face detected!")
+            print("WARNING: no face detected!")
             if tolerant:
                 # Just use the whole image
                 img_cropped = img
@@ -71,7 +71,7 @@ def convert_images(in_dir: str, out_dir: str, tolerant: bool) -> None:
         else:
             # More faces?
             if len(face_list) > 1:
-                print("Warning: more than one face detected: {}".format(len(face_list)))
+                print("WARNING: more than one face detected: {}".format(len(face_list)))
                 if not tolerant:
                     break
 
