@@ -65,11 +65,12 @@ class ResnetModel(BaseModel):
         self.classifier = nn.Sequential(
             nn.Linear(2048, n_classes))
 
-        self.sigm = nn.Sigmoid()
+        # self.sigm = nn.Sigmoid()
 
     def forward(self, image):
         features = self.features(image).squeeze(-1).squeeze(-1)
 
-        out = self.sigm(self.classifier(features))
+        # out = self.sigm(self.classifier(features))
+        out = self.classifier(features)
 
         return out
