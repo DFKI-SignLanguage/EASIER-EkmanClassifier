@@ -28,10 +28,12 @@ class Trainer(BaseTrainer):
         self.lr_scheduler = lr_scheduler
         self.log_step = int(np.sqrt(data_loader.batch_size))
 
-        self.label_names = list(self.data_loader.dataset.idx_to_class.values())
-        self.train_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], label_names=self.label_names,
+        self.idx_to_class = list(self.data_loader.dataset.idx_to_class.values())
+        self.train_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns],
+                                           label_names=self.idx_to_class,
                                            writer=self.writer)
-        self.valid_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], label_names=self.label_names,
+        self.valid_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns],
+                                           label_names=self.idx_to_class,
                                            writer=self.writer)
 
     def _train_epoch(self, epoch):
@@ -75,10 +77,13 @@ class Trainer(BaseTrainer):
         output = torch.Tensor(np.concatenate(outputs, axis=0))
         target = torch.Tensor(np.concatenate(targets, axis=0))
         for met in self.metric_ftns:
-            if "_per_class" not in met.__name__:
-                self.train_metrics.update(met.__name__, met(output, target))
-            elif "_per_class" in met.__name__:
-                self.train_metrics.update_per_class(met.__name__, met(output, target, self.label_names))
+            curr_metric_out = met(output, target)
+            try:
+                iter(curr_metric_out)
+                curr_metric_out = {self.idx_to_class[i]: curr_metric_out[i] for i in range(len(curr_metric_out))}
+                self.train_metrics.update_per_class(met.__name__, curr_metric_out)
+            except TypeError:
+                self.train_metrics.update(met.__name__, curr_metric_out)
 
         log = self.train_metrics.result()
 
@@ -120,10 +125,13 @@ class Trainer(BaseTrainer):
         output = torch.Tensor(np.concatenate(outputs, axis=0))
         target = torch.Tensor(np.concatenate(targets, axis=0))
         for met in self.metric_ftns:
-            if "_per_class" not in met.__name__:
-                self.valid_metrics.update(met.__name__, met(output, target))
-            elif "_per_class" in met.__name__:
-                self.valid_metrics.update_per_class(met.__name__, met(output, target, self.label_names))
+            curr_metric_out = met(output, target)
+            try:
+                iter(curr_metric_out)
+                curr_metric_out = {self.idx_to_class[i]: curr_metric_out[i] for i in range(len(curr_metric_out))}
+                self.valid_metrics.update_per_class(met.__name__, curr_metric_out)
+            except TypeError:
+                self.valid_metrics.update(met.__name__, curr_metric_out)
 
         # add histogram of model parameters to the tensorboard
         for name, p in self.model.named_parameters():
