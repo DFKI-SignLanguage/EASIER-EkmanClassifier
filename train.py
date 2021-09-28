@@ -66,8 +66,7 @@ def main(config):
                       config=config,
                       device=device,
                       data_loader=data_loader,
-                      #TODO: uncomment for final train.py
-                      # valid_data_loader=valid_data_loader,
+                      valid_data_loader=valid_data_loader,
                       lr_scheduler=lr_scheduler)
 
     start = timer()
