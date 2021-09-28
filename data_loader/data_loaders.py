@@ -65,6 +65,7 @@ class FaceExpressionPhoenixDataset(Dataset):
         self.target_transform = target_transform
 
         y_df = pd.read_csv(self.labels_csv_path, dtype=str)
+        y_df = y_df.head(350)
         # Removing all data points with 'Face_not_visible' i.e no labels
         y_df.dropna(inplace=True)
         # Extracting multiple labels
@@ -177,9 +178,35 @@ class PredictionDataset(Dataset):
 
         tensor_trsnfrm = transforms.ToTensor()
         in_image = tensor_trsnfrm(in_image)
-
         img_name = os.path.split(inp_img_name)[1]
         return in_image, img_name
+
+    # getitem setup for loading pretrained model from asavchenko
+    # git repo https://github.com/HSE-asavchenko/face-emotion-recognition
+    # def __getitem__(self, idx):
+    #     inp_img_name = self.image_inputs[idx]
+    #     in_image = Image.open(inp_img_name).convert('RGB')
+    #
+    #     size = 224, 224  # Fixed to Resnet input size
+    #     # in_image.thumbnail(size, Image.ANTIALIAS)
+    #
+    #     # tensor_trsnfrm = transforms.ToTensor()
+    #     tensor_trsnfrm = transforms.Compose(
+    #         [
+    #             transforms.Resize(size),
+    #             # transforms.RandomHorizontalFlip(),
+    #             transforms.ToTensor(),
+    #             transforms.Normalize(mean=[0.485, 0.456, 0.406],
+    #                                  std=[0.229, 0.224, 0.225])
+    #         ]
+    #     )
+    #     in_image = tensor_trsnfrm(in_image)
+    #     in_image.unsqueeze_(0)
+    #
+    #     print(in_image.size())
+    #
+    #     img_name = os.path.split(inp_img_name)[1]
+    #     return in_image, img_name
 
     def __len__(self):
         return len(self.image_inputs)
