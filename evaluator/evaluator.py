@@ -23,11 +23,11 @@ class Evaluator:
                              "Total Training time", "Validation Prediction Time", "Test Prediction Time", "TensorBoard"]
         self.eval_df = pd.DataFrame(columns=self.eval_columns)
         self.data_loader = data_loader
-        self.label_names = self.data_loader.dataset.idx_to_class
+        self.idx_to_class = self.data_loader.dataset.idx_to_class
         self.device = device
         self.loss_fn = getattr(module_loss, config['loss'])
 
-        #TODO load metric ftns from static. No need for config
+        # TODO load metric ftns from static. No need for config
         self.metric_ftns = [getattr(module_metric, met) for met in config['evaluation_store']['metrics']]
         self._save_dir = config.save_eval_dir
         self.config = config
@@ -67,10 +67,14 @@ class Evaluator:
         target = torch.Tensor(np.concatenate(targets, axis=0))
         for met in self.metric_ftns:
             # TODO Convert list of per class values from _per_class metric ftns to dict outside the metrics ftns
-            if "_per_class" not in met.__name__:
-                metrics.update({met.__name__: met(output, target)})
-            elif "_per_class" in met.__name__:
-                metrics.update({met.__name__: met(output, target, self.label_names)})
+            curr_metric_out = met(output, target)
+            try:
+                iter(curr_metric_out)
+                curr_metric_out = {self.idx_to_class[i]: curr_metric_out[i] for i in range(len(curr_metric_out))}
+            except TypeError:
+                pass
+            curr_metric_out = {met.__name__: curr_metric_out}
+            metrics.update(curr_metric_out)
 
         n_samples = len(self.data_loader.sampler)
         self.metrics_results = {'loss': total_loss / n_samples}
@@ -87,7 +91,10 @@ class Evaluator:
         self.config.run_id = timestamp
         self.timestamp = timestamp
 
-        self.eval_df = pd.read_csv(self._save_dir / "eval.csv")
+        try:
+            self.eval_df = pd.read_csv(self._save_dir / "eval.csv")
+        except FileNotFoundError:
+            self.eval_df = pd.DataFrame(columns=self.eval_columns)
 
     def save(self, type_eval):
 
