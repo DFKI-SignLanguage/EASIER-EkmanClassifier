@@ -2,12 +2,14 @@ import torch
 from torchvision import datasets, transforms
 from base import BaseDataLoader
 import os
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 import pandas as pd
 # from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.utils import class_weight
 import numpy as np
 from PIL import Image
+import glob
+from pathlib import Path
 
 # Classes expected to be in the first round of annotation on the EASIER project.
 EASIER_CLASSES = {
@@ -227,7 +229,7 @@ class AffectNet(Dataset):
         labels_array = self.labels
         class_weights = class_weight.compute_class_weight(class_weight='balanced', classes=np.unique(labels_array),
                                                           y=labels_array)
-        num_classes = len(self.label_names.keys())
+        num_classes = len(self.idx_to_class.keys())
 
         assert(class_weights.size == num_classes)
 
@@ -239,7 +241,7 @@ class AffectNet(Dataset):
 
 
     def __len__(self):
-        return len(self.images)
+        return 50# len(self.images)
 
 
     def __getitem__(self, index):
@@ -257,40 +259,59 @@ class AffectNet(Dataset):
 class AffectNetDataLoader(DataLoader):
     """
     AffectNet data loading demo using DataLoader
+    validation_split does nothing. included for compatibility with other loaders
     """
 
-    def __init__(self, data_dir, val_data_dir, batch_size, shuffle=True, num_workers=1):
+    def __init__(self, data_dir, batch_size, training=True, shuffle=True, num_workers=1, validation_split=0.0):
+
+        self.validation_split = 0
+        self.training = training
+
         trsfm = transforms.Compose([
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(), 
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
 
-        self.validation_split = 0
+        val_trsfm = transforms.Compose([
+            transforms.ToTensor(), 
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
 
-        self.dataset = AffectNet(data_dir, transform=trsfm)
-        self.val_dataset = AffectNet(val_data_dir, transform=trsfm)
+        if training:
+
+            self.dataset = AffectNet(os.path.join(data_dir,"train_set"), transform=trsfm)
+            self.val_dataset = AffectNet(os.path.join(data_dir,"val_set"), transform=val_trsfm)
+            weights = self.dataset.get_sampler_weights()
+            train_sampler = torch.utils.data.sampler.WeightedRandomSampler(weights=torch.DoubleTensor(weights),
+                                                                           num_samples=len(self.dataset))
+            shuffle = False
+        else:
+            trsfm = transforms.Compose([
+                transforms.ToTensor(), 
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            ])
+
+            self.dataset = AffectNet(os.path.join(data_dir,"val_set"), transform=val_trsfm)
+            train_sampler = None
+            shuffle = False
 
         self.shuffle = shuffle
 
-        self.val_data_dir = val_data_dir
+        # self.val_data_dir = val_data_dir
         self.batch_size = batch_size
         self.num_workers = num_workers
 
-        weights = self.dataset.get_sampler_weights()
-        train_sampler = torch.utils.data.sampler.WeightedRandomSampler(weights=torch.DoubleTensor(weights),
-                                                                       num_samples=len(self.dataset))
 
         self.init_kwargs = {
             'dataset': self.dataset,
             'batch_size': self.batch_size,
-            'shuffle': False,
+            'shuffle': shuffle,
             'num_workers': self.num_workers,
         }
 
 
         super().__init__(sampler=train_sampler, **self.init_kwargs)
-
 
     def split_validation(self):
 
