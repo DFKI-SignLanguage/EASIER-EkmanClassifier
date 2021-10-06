@@ -82,6 +82,7 @@ class FaceExpressionPhoenixDataset(Dataset):
 
     def __len__(self):
         return len(self.image_inputs)
+        # return 50
 
     def __getitem__(self, idx):
 
@@ -161,7 +162,6 @@ class FaceExpressionPhoenixDataLoader(BaseDataLoader):
 
 class PredictionDataset(Dataset):
     def __init__(self, data_path, data_loader):
-        # https://www.researchgate.net/publication/340049545_Facial_Expression_Phoenix_FePh_An_Annotated_Sequenced_Dataset_for_Facial_and_Emotion-Specified_Expressions_in_Sign_Language
         try:
             self.idx_to_class = data_loader.get_label_map()
         except AttributeError:
@@ -211,40 +211,40 @@ class PredictionDataset(Dataset):
     #     return in_image, img_name
 
     def __len__(self):
-        return len(self.image_inputs)
+        # return len(self.image_inputs)
+        return 50
+
 
 # ---------------------- AffectNet Dataset & DataLoader ---------------------- #
 
 class AffectNet(Dataset):
     idx_to_class = {0: "neutral",
-                        1: "happy",
-                        2: "sad",
-                        3: "surprise",
-                        4: "fear",
-                        5: "disgust",
-                        6: "anger",
-                        7: "contempt"}
+                    1: "happy",
+                    2: "sad",
+                    3: "surprise",
+                    4: "fear",
+                    5: "disgust",
+                    6: "anger",
+                    7: "contempt"}
 
     def __init__(self, data_path, transform=None):
         self.transform = transform
-        self.images = glob.glob(os.path.join(data_path,'images/*.jpg'))
+        self.images = glob.glob(os.path.join(data_path, 'images/*.jpg'))
         self.transform = transform
         self.data_path = data_path
 
-
-        cache_file = os.path.join(data_path,"expressions_cache.npy")
+        cache_file = os.path.join(data_path, "expressions_cache.npy")
         # check if labels cache exists
         if not os.path.exists(cache_file):
             labels = []
             for im in self.images:
                 base = Path(im).stem
-                exp = np.load(os.path.join(self.data_path,'annotations',base+"_exp.npy"))
+                exp = np.load(os.path.join(self.data_path, 'annotations', base + "_exp.npy"))
                 labels.append(int(exp))
-            np.save(cache_file,labels)
+            np.save(cache_file, labels)
 
         self.labels = np.load(cache_file)
         self.num_classes = 8
-
 
     def get_sampler_weights(self):
         print("Calculating sampler weights...")
@@ -253,7 +253,7 @@ class AffectNet(Dataset):
                                                           y=labels_array)
         num_classes = len(self.idx_to_class.keys())
 
-        assert(class_weights.size == num_classes)
+        assert (class_weights.size == num_classes)
 
         sampler_weights = np.zeros(len(labels_array))
         for i in range(len(labels_array)):
@@ -261,16 +261,14 @@ class AffectNet(Dataset):
 
         return sampler_weights
 
-
     def __len__(self):
         return len(self.images)
-
 
     def __getitem__(self, index):
         im = Image.open(self.images[index]).convert('RGB')
 
         base = Path(self.images[index]).stem
-        exp = int(np.load(os.path.join(self.data_path,'annotations',base+"_exp.npy")))
+        exp = int(np.load(os.path.join(self.data_path, 'annotations', base + "_exp.npy")))
 
         if self.transform is not None:
             im = self.transform(im)
@@ -291,30 +289,30 @@ class AffectNetDataLoader(DataLoader):
 
         trsfm = transforms.Compose([
             transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(), 
+            transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
 
         val_trsfm = transforms.Compose([
-            transforms.ToTensor(), 
+            transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
 
         if training:
 
-            self.dataset = AffectNet(os.path.join(data_dir,"train_set"), transform=trsfm)
-            self.val_dataset = AffectNet(os.path.join(data_dir,"val_set"), transform=val_trsfm)
+            self.dataset = AffectNet(os.path.join(data_dir, "train_set"), transform=trsfm)
+            self.val_dataset = AffectNet(os.path.join(data_dir, "val_set"), transform=val_trsfm)
             weights = self.dataset.get_sampler_weights()
             train_sampler = torch.utils.data.sampler.WeightedRandomSampler(weights=torch.DoubleTensor(weights),
                                                                            num_samples=len(self.dataset))
             shuffle = False
         else:
             trsfm = transforms.Compose([
-                transforms.ToTensor(), 
+                transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ])
 
-            self.dataset = AffectNet(os.path.join(data_dir,"val_set"), transform=val_trsfm)
+            self.dataset = AffectNet(os.path.join(data_dir, "val_set"), transform=val_trsfm)
             train_sampler = None
             shuffle = False
 
@@ -324,14 +322,12 @@ class AffectNetDataLoader(DataLoader):
         self.batch_size = batch_size
         self.num_workers = num_workers
 
-
         self.init_kwargs = {
             'dataset': self.dataset,
             'batch_size': self.batch_size,
             'shuffle': shuffle,
             'num_workers': self.num_workers,
         }
-
 
         super().__init__(sampler=train_sampler, **self.init_kwargs)
 
