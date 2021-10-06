@@ -43,14 +43,16 @@ def main(config):
     model = model.to(device)
     model.eval()
 
+    idx_to_class = data_loader.dataset.idx_to_class
     predictions = []
     img_names = []
     with torch.no_grad():
         for i, (data, img_name) in enumerate(tqdm(data_loader)):
             data = data.to(device)
-            output = model(data)
-            output = output.cpu().numpy()
-            output = np.argmax(output, axis=1)
+            output_one_hot = model(data)
+            output_one_hot = output_one_hot.cpu().numpy()
+
+            output = np.argmax(output_one_hot, axis=1)
             predictions.append(output)
 
             if type(img_name) == tuple:
@@ -59,17 +61,25 @@ def main(config):
 
     predictions = np.array(predictions).ravel()
 
-    idx_to_class = data_loader.dataset.idx_to_class
+    out_all_one_hot = np.eye(len(idx_to_class))[predictions]
 
     pred_class_names = []
     for idx in predictions:
         pred_class_names.append(idx_to_class[idx])
 
-    pred_df = pd.DataFrame(data={
-        "ImageNames": img_names,
-        "ClassNames": pred_class_names,
-        "Classes": predictions
+    df_data = {}
+    df_data.update({
+        "ImageName": img_names})
+
+    for k, v in idx_to_class.items():
+        df_data[v] = out_all_one_hot[:, k]
+
+    df_data.update({
+        "ClassName": pred_class_names,
+        "Class": predictions
     })
+
+    pred_df = pd.DataFrame(data=df_data)
     pred_df.to_csv(config["predictor"]["out_dir"])
 
 
