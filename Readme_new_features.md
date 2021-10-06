@@ -1,4 +1,16 @@
-# New Features
+# v2 Features
+- Bugfixes 
+  - ConfigParser: Prevent empty folder from being created when running test.py
+  - Evaluator: Prevent code crash when the model passed to test.py does not have a corresponding ```eval.csv``` in ```saved/eval/Resnet50/{model_id_timestamp}```
+- Script for using a trained model to predict on any folder of images. The flags are as below:
+  - ```-p / --predict``` flag to indicate predict script is running. Just required to change the resume model flag from -r/--resume to -m/--model. This workaround is to ensure compatibility with test.py and train.py scripts.
+  - ```-m / --model``` flag ==> path of the model to be used. Similar in function as the -r/--resume flag in train.py and test.py
+  - ```-i / --input``` flag ==> path of the folder containing the images that need the predictions.
+  - ```-o / --output``` flag ==> path and filename for the output csv file containing the predictions.
+  
+Ex: ``` python predict.py -p --config config_temp.json -m saved/models/ResNet50-AffNet-nopreproc-210921/ResNet50_affectnet.pth -i /Users/chbh01/Documents/OfflineCodebases/DFKI_Hiwi/ACG/EASIER/Datasets/VeraAmMittags/video/VAM-frames-cropped -o vam-frames-cropped-squared-preds.csv ```
+
+# v1 Features
 
 ### All the new features are currently set up for Face Extraction Phoenix Dataset only.
 
