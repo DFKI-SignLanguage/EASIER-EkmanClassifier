@@ -94,6 +94,8 @@ class Evaluator:
         try:
             self.eval_df = pd.read_csv(self._save_dir / "eval.csv")
         except FileNotFoundError:
+            if not os.path.exists(self._save_dir):
+                os.makedirs(self._save_dir)
             self.eval_df = pd.DataFrame(columns=self.eval_columns)
 
     def save(self, type_eval):
@@ -136,4 +138,11 @@ class Evaluator:
         else:
             raise ValueError
 
-        self.eval_df.to_csv(self._save_dir / "eval.csv")
+        try:
+            self.eval_df.to_csv(self._save_dir / "eval.csv")
+        except FileNotFoundError:
+            os.makedirs(self._save_dir)
+            self.eval_df.to_csv(self._save_dir / "eval.csv")
+        # self.eval_df.to_csv(self._save_dir / "eval.csv")
+
+

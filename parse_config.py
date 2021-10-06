@@ -40,9 +40,6 @@ class ConfigParser:
         self.save_dir.mkdir(parents=True, exist_ok=exist_ok)
         self.log_dir.mkdir(parents=True, exist_ok=exist_ok)
 
-        if self.config["evaluation_store"]["args"]["training"]:
-            self.save_eval_dir.mkdir(parents=True, exist_ok=exist_ok)
-
         # save updated config file to the checkpoint dir
         write_json(self.config, self.save_dir / 'config.json')
 
@@ -66,7 +63,6 @@ class ConfigParser:
             # making the -m or --model flag (predict.py) compatible with -r or --resume (train.py & test.py)
             if hasattr(args, "predict"):
                 args.resume = args.model
-
 
         if args.device is not None:
             os.environ["CUDA_VISIBLE_DEVICES"] = args.device
@@ -157,6 +153,10 @@ class ConfigParser:
     def log_dir(self):
         return self._log_dir
 
+    def mk_eval_dir(self):
+        exist_ok = self.run_id == ''
+        if self.config["evaluation_store"]["args"]["training"]:
+            self.save_eval_dir.mkdir(parents=True, exist_ok=exist_ok)
 
 # helper functions to update config dict with custom cli options
 def _update_config(config, modification):

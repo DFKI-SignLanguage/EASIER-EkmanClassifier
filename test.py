@@ -1,3 +1,4 @@
+import collections
 import argparse
 import torch
 import data_loader.data_loaders as module_data
@@ -8,7 +9,9 @@ from parse_config import ConfigParser
 from timeit import default_timer as timer
 from evaluator.evaluator import Evaluator
 import datetime
-#TODO Find solution for PosixPath and WindowsPath
+
+
+# TODO Find solution for PosixPath and WindowsPath
 # when model is trained on Linux, it expects a PosixPath to load on Windows as well and vice versa
 # import pathlib
 # temp = pathlib.PosixPath
@@ -45,6 +48,7 @@ def main(config):
     model.eval()
 
     evaluator = Evaluator(config, data_loader, device)
+
     evaluator.load_val_eval_df()
 
     start = timer()
@@ -70,6 +74,4 @@ if __name__ == '__main__':
                       help='indices of GPUs to enable (default: all)')
 
     config = ConfigParser.from_args(args)
-
-    # config["data_loader"]["args"]["training"] = False
     main(config)
