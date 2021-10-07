@@ -1,15 +1,18 @@
 import argparse
 import collections
+import datetime
+
 import torch
 import numpy as np
 import data_loader.data_loaders as module_data
+from evaluator.evaluator import Evaluator
 import model.loss as module_loss
 import model.metric as module_metric
 import model.model as module_arch
 from parse_config import ConfigParser
 from trainer import Trainer
 from utils import prepare_device
-
+from timeit import default_timer as timer
 
 # fix random seeds for reproducibility
 SEED = 123
@@ -17,6 +20,18 @@ torch.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 np.random.seed(SEED)
+
+
+def execute_and_time_fn(fn, human_readable=True):
+    start = timer()
+    fn()
+    end = timer()
+    if not human_readable:
+        time_elapsed = end - start
+    elif human_readable:
+        time_elapsed = datetime.timedelta(seconds=(end - start))
+    return time_elapsed
+
 
 def main(config):
     logger = config.get_logger('train')
@@ -39,6 +54,9 @@ def main(config):
     criterion = getattr(module_loss, config['loss'])
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 
+    # set up evaluator that can save train, val and test evaluation results
+    evaluator = Evaluator(config, data_loader, device)
+
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = config.init_obj('optimizer', torch.optim, trainable_params)
@@ -51,7 +69,21 @@ def main(config):
                       valid_data_loader=valid_data_loader,
                       lr_scheduler=lr_scheduler)
 
+    start = timer()
     trainer.train()
+    end = timer()
+    training_time = datetime.timedelta(seconds=(end - start))
+
+    evaluator.training_time = training_time
+
+    start = timer()
+    evaluator.evaluate_model(model)
+    end = timer()
+    prediction_time = datetime.timedelta(seconds=(end - start))
+
+    evaluator.pred_time = prediction_time
+
+    evaluator.save(type_eval="validation")
 
 
 if __name__ == '__main__':
@@ -67,7 +99,7 @@ if __name__ == '__main__':
     CustomArgs = collections.namedtuple('CustomArgs', 'flags type target')
     options = [
         CustomArgs(['--lr', '--learning_rate'], type=float, target='optimizer;args;lr'),
-        CustomArgs(['--bs', '--batch_size'], type=int, target='data_loader;args;batch_size')
+        CustomArgs(['--bs', '--batch_size'], type=int, target='data_loader;args;batch_size'),
     ]
     config = ConfigParser.from_args(args, options)
     main(config)

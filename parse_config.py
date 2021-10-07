@@ -24,14 +24,18 @@ class ConfigParser:
 
         # set save_dir where trained model and log will be saved.
         save_dir = Path(self.config['trainer']['save_dir'])
+        save_eval_dir = Path(self.config['evaluation_store']['args']['save_dir'])
 
         exper_name = self.config['name']
-        if run_id is None: # use timestamp as default run-id
+        if run_id is None:  # use timestamp as default run-id
             run_id = datetime.now().strftime(r'%m%d_%H%M%S')
+        self.run_id = run_id
         self._save_dir = save_dir / 'models' / exper_name / run_id
         self._log_dir = save_dir / 'log' / exper_name / run_id
 
-        # make directory for saving checkpoints and log.
+        self._save_eval_dir = save_eval_dir / "eval" / exper_name / run_id
+
+        # make directory for saving checkpoints and log and evaluation metrics.
         exist_ok = run_id == ''
         self.save_dir.mkdir(parents=True, exist_ok=exist_ok)
         self.log_dir.mkdir(parents=True, exist_ok=exist_ok)
@@ -56,6 +60,9 @@ class ConfigParser:
             args.add_argument(*opt.flags, default=None, type=opt.type)
         if not isinstance(args, tuple):
             args = args.parse_args()
+            # making the -m or --model flag (predict.py) compatible with -r or --resume (train.py & test.py)
+            if hasattr(args, "predict"):
+                args.resume = args.model
 
         if args.device is not None:
             os.environ["CUDA_VISIBLE_DEVICES"] = args.device
@@ -67,14 +74,24 @@ class ConfigParser:
             assert args.config is not None, msg_no_cfg
             resume = None
             cfg_fname = Path(args.config)
-        
+
         config = read_json(cfg_fname)
         if args.config and resume:
             # update new config for fine-tuning
             config.update(read_json(args.config))
 
+        if hasattr(args, "predict"):
+            predictor = {
+                "predictor":
+                    {
+                        "in_dir": args.input,
+                        "out_dir": args.output,
+                    }
+            }
+            config.update(predictor)
+
         # parse custom cli options into dictionary
-        modification = {opt.target : getattr(args, _get_opt_name(opt.flags)) for opt in options}
+        modification = {opt.target: getattr(args, _get_opt_name(opt.flags)) for opt in options}
         return cls(config, resume, modification)
 
     def init_obj(self, name, module, *args, **kwargs):
@@ -112,7 +129,8 @@ class ConfigParser:
         return self.config[name]
 
     def get_logger(self, name, verbosity=2):
-        msg_verbosity = 'verbosity option {} is invalid. Valid options are {}.'.format(verbosity, self.log_levels.keys())
+        msg_verbosity = 'verbosity option {} is invalid. Valid options are {}.'.format(verbosity,
+                                                                                       self.log_levels.keys())
         assert verbosity in self.log_levels, msg_verbosity
         logger = logging.getLogger(name)
         logger.setLevel(self.log_levels[verbosity])
@@ -128,8 +146,17 @@ class ConfigParser:
         return self._save_dir
 
     @property
+    def save_eval_dir(self):
+        return self._save_eval_dir
+
+    @property
     def log_dir(self):
         return self._log_dir
+
+    def mk_eval_dir(self):
+        exist_ok = self.run_id == ''
+        if self.config["evaluation_store"]["args"]["training"]:
+            self.save_eval_dir.mkdir(parents=True, exist_ok=exist_ok)
 
 # helper functions to update config dict with custom cli options
 def _update_config(config, modification):
@@ -141,16 +168,19 @@ def _update_config(config, modification):
             _set_by_path(config, k, v)
     return config
 
+
 def _get_opt_name(flags):
     for flg in flags:
         if flg.startswith('--'):
             return flg.replace('--', '')
     return flags[0].replace('--', '')
 
+
 def _set_by_path(tree, keys, value):
     """Set a value in a nested object in tree by sequence of keys."""
     keys = keys.split(';')
     _get_by_path(tree, keys[:-1])[keys[-1]] = value
+
 
 def _get_by_path(tree, keys):
     """Access a nested object in tree by sequence of keys."""

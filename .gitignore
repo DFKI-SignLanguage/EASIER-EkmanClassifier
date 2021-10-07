@@ -111,3 +111,7 @@ datasets/
 .idea/
 __MACOSX/
 .DS_Store
+
+config_temp.json
+
+*.csv
