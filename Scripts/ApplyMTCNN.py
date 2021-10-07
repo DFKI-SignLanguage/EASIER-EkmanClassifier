@@ -10,10 +10,13 @@ import numpy as np
 
 import os
 
+from typing import Tuple
+from typing import Optional
+
 IMAGE_FORMATS = set(('.png', '.PNG', '.jpg', '.JPG', '.jpeg', '.JPEG'))
 
 
-def convert_images(in_dir: str, out_dir: str, tolerant: bool, square: bool) -> None:
+def convert_images(in_dir: str, out_dir: str, tolerant: bool, square: bool, bbox_scale: Optional[float]) -> None:
     """Scans files in a directory.
     For each image ending in a recognized format, detect the position of a face, crop the image,
     and save the cropped result in the destination directory.
@@ -100,6 +103,15 @@ def convert_images(in_dir: str, out_dir: str, tolerant: bool, square: bool) -> N
 
                 assert width == height
 
+            #
+            # Scale the box
+            if bbox_scale is not None:
+                x, y, width, height = scale_bbox(x, y, width, height, bbox_scale)
+                x = round(x)
+                y = round(y)
+                width = round(width)
+                height = round(height)
+
             img_cropped = img.crop((x, y, x + width, y + height))
 
             # Beware! If the image crop area is outside of the visible area, PIL (at least Pillow==8.3.1)
@@ -114,6 +126,50 @@ def convert_images(in_dir: str, out_dir: str, tolerant: bool, square: bool) -> N
         img_cropped.save(out_name)
 
 
+def scale_bbox(x: float, y: float, width: float, height: float, scale: float) -> Tuple[float, float, float, float]:
+    """
+    Scales a bounding box around its center
+
+    :param x:
+    :param y:
+    :param width:
+    :param height:
+    :param scale:
+    :return:
+    """
+
+    # Compute the bottom-right corner coords
+    x2 = x + width - 1
+    y2 = y + height - 1
+
+    cx = (x + x2) / 2
+    cy = (y + y2) / 2
+
+    # Prepare the transformation matrices
+
+    # The matrix to extend the box
+    scaling_matrix = np.array([[scale, 0,     0],
+                               [0,     scale, 0],
+                               [0,     0,     1]])
+
+    # The matrix to center the box around the center, before scaling
+    to_origin_matrix = np.array([[1, 0, -cx],
+                                 [0, 1, -cy],
+                                 [0, 0, 1]])
+
+    back_translation_matrix = np.linalg.inv(to_origin_matrix)
+
+    t = back_translation_matrix @ scaling_matrix @ to_origin_matrix
+
+    nx, ny, o = t @ (x, y, 1)
+    nx2, ny2, o2 = t @ (x2, y2, 1)
+
+    nwidth = nx2 - nx + 1
+    nheight = ny2 - ny + 1
+
+    return nx, ny, nwidth, nheight
+
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Apply the MTCNN face detection to images in a directory.')
@@ -124,6 +180,10 @@ if __name__ == '__main__':
                         help='If selected, the output cropped region will be forced to have 1:1 ratio'
                              ' by extending by the same amount of pixels in both directions'
                              ' (up and down, or left and right)')
+    parser.add_argument('-bbs', '--bbox-scale', default=None, type=float, required=False,
+                        help='scaling factor for the bounding box around the face.'
+                             ' Values > 1.0 will extend the box (zoom-out of the camera).'
+                             ' Values < 1.0 will shrink the box (zoom-in of the camera).')
     parser.add_argument('-i', '--input', default=None, type=str, required=True,
                         help='path to a directory of images to analyse')
     parser.add_argument('-o', '--output', default=None, type=str, required=True,
@@ -135,10 +195,11 @@ if __name__ == '__main__':
     outdir = args.output
     tolerant = args.tolerant
     square = args.square
+    bbox_scale = args.bbox_scale
 
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
-    convert_images(in_dir=indir, out_dir=outdir, tolerant=tolerant, square=square)
+    convert_images(in_dir=indir, out_dir=outdir, tolerant=tolerant, square=square, bbox_scale=bbox_scale)
 
     print("Done.")
