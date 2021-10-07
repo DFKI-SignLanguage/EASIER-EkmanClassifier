@@ -19,7 +19,7 @@ def compose_video(predictions: str, frames_dir: str, out_video: str) -> None:
 
     video_writer = cv2.VideoWriter(out_video, cv2.VideoWriter_fourcc(*'mp4v'), FPS, VIDEO_OUT_SIZE)
 
-    for img_name, label in zip(predictions_df['ImageNames'], predictions_df['ClassNames']):
+    for img_name, label in zip(predictions_df['ImageName'], predictions_df['ClassName']):
 
         img_path = os.path.join(frames_dir, img_name)
 
