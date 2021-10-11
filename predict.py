@@ -43,25 +43,27 @@ def main(config):
     model = model.to(device)
     model.eval()
 
-    idx_to_class = data_loader.dataset.idx_to_class
+    out_all_softmax = []
     predictions = []
     img_names = []
     with torch.no_grad():
         for i, (data, img_name) in enumerate(tqdm(data_loader)):
             data = data.to(device)
-            output_one_hot = model(data)
-            output_one_hot = output_one_hot.cpu().numpy()
-
-            output = np.argmax(output_one_hot, axis=1)
+            output_softmax = model(data)
+            output_softmax = output_softmax.cpu().numpy()
+            out_all_softmax.append(output_softmax)
+            output = np.argmax(output_softmax, axis=1)
             predictions.append(output)
 
             if type(img_name) == tuple:
                 img_name = img_name[0]
             img_names.append(img_name)
 
-    predictions = np.array(predictions).ravel()
+    out_all_softmax = np.stack(out_all_softmax).squeeze()
 
-    out_all_one_hot = np.eye(len(idx_to_class))[predictions]
+    predictions = np.array(predictions).ravel()
+    idx_to_class = data_loader.dataset.idx_to_class
+    # out_all_one_hot = np.eye(len(idx_to_class))[predictions]
 
     pred_class_names = []
     for idx in predictions:
@@ -72,7 +74,8 @@ def main(config):
         "ImageName": img_names})
 
     for k, v in idx_to_class.items():
-        df_data[v] = out_all_one_hot[:, k]
+        # df_data[v] = out_all_one_hot[:, k]
+        df_data[v] = out_all_softmax[:, k]
 
     df_data.update({
         "ClassName": pred_class_names,
@@ -81,7 +84,8 @@ def main(config):
 
     pred_df = pd.DataFrame(data=df_data)
     pred_df.to_csv(config["predictor"]["out_dir"])
-
+    print(config.resume)
+    print(pred_df.ClassName.value_counts())
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser(description='Generates the predictions for a given (already trained) model.'

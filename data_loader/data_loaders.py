@@ -211,8 +211,8 @@ class PredictionDataset(Dataset):
     #     return in_image, img_name
 
     def __len__(self):
-        # return len(self.image_inputs)
-        return 50
+        return len(self.image_inputs)
+        # return 50
 
 
 # ---------------------- AffectNet Dataset & DataLoader ---------------------- #
