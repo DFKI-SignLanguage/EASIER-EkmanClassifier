@@ -86,7 +86,7 @@ def convert_annotation(annotations: pandas.DataFrame,
             out_frame_time = out_frame / fps
 
     #
-    # TODO --  transform the label in 1-hot
+    # Transform the label in 1-hot
     # numpy.eye(number of classes)[vector containing the labels]
     one_hot_cols = np.eye(len(AFFNET_CLASSES))[out['Class']].astype(int)
     one_hot_df = pandas.DataFrame(columns=AFFNET_CLASSES, data=one_hot_cols)
@@ -111,8 +111,6 @@ if __name__ == '__main__':
                         help='path to the .csv file with the image list (Must have a column with ImageName).')
     parser.add_argument('-o', '--output', default=None, type=str, required=True,
                         help='path to the name of the CSV output file.')
-    #parser.add_argument('-d', '--dir', default=None, type=str, required=True,
-    #                    help='path to the directory containing the frames.')
 
     args = parser.parse_args()
 
