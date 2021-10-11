@@ -5,7 +5,9 @@ import PIL.Image
 import numpy as np
 
 parser = argparse.ArgumentParser(
-    description='Python wrapper for ffmpeg to convert Phoenix dataset image frames to video')
+    description='Script to recurse over the PHOENIX dataset frames and flatten them into a single directory.'
+                ' In addition, a CSV file with all the frame names is generated.'
+                ' Finally, frames can be rescaled as suggested in the PHOENIX documentation.')
 parser.add_argument("-i", "--in_dir", help="input folder containing folders with frames", required=True)
 parser.add_argument("-o", "--out_dir", help="folder in which all frames will be saved", required=True)
 parser.add_argument("-c", "--out_csv", help="CSV file containing the list of all frames", required=True)
