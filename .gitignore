@@ -115,3 +115,4 @@ __MACOSX/
 config_temp.json
 
 *.csv
+/pred_results/

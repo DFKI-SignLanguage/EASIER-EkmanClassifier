@@ -22,57 +22,62 @@ def main(config):
 
     # setup data_loader instances
     pred_dataset = PredictionDataset(config["predictor"]["in_dir"], getattr(module_data, config['data_loader']['type']))
-    data_loader = DataLoader(pred_dataset, batch_size=2,
+    data_loader = DataLoader(pred_dataset, batch_size=1,
                              shuffle=False, num_workers=0)
-
-    # build model architecture
-    # model = config.init_obj('arch', module_arch)
-
-    # get function handles of loss and metrics
 
     logger.info('Loading checkpoint: {} ...'.format(config.resume))
     model = torch.load(config.resume, map_location='cpu')
     model.eval()
     logger.info(model)
 
-    # state_dict = checkpoint['state_dict']
-    # if config['n_gpu'] > 1:
-    #     model = torch.nn.DataParallel(model)
-    # model.load_state_dict(state_dict)
-
     # prepare model for testing
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
     model.eval()
+    out_all_softmax = []
 
     predictions = []
     img_names = []
     with torch.no_grad():
         for i, (data, img_name) in enumerate(tqdm(data_loader)):
             data = data.to(device)
-            output = model(data)
-            output = output.cpu().numpy()
-            output = np.argmax(output, axis=1)
+            output_softmax = model(data)
+            output_softmax = output_softmax.cpu().numpy()
+            out_all_softmax.append(output_softmax)
+            output = np.argmax(output_softmax, axis=1)
             predictions.append(output)
 
             if type(img_name) == tuple:
                 img_name = img_name[0]
             img_names.append(img_name)
 
-    predictions = np.array(predictions).ravel()
+    out_all_softmax = np.stack(out_all_softmax).squeeze()
 
+    predictions = np.array(predictions).ravel()
     idx_to_class = data_loader.dataset.idx_to_class
+    # out_all_one_hot = np.eye(len(idx_to_class))[predictions]
 
     pred_class_names = []
     for idx in predictions:
         pred_class_names.append(idx_to_class[idx])
 
-    pred_df = pd.DataFrame(data={
-        "ImageNames": img_names,
-        "ClassNames": pred_class_names,
-        "Classes": predictions
+    df_data = {}
+    df_data.update({
+        "ImageName": img_names})
+
+    for k, v in idx_to_class.items():
+        # df_data[v] = out_all_one_hot[:, k]
+        df_data[v] = out_all_softmax[:, k]
+
+    df_data.update({
+        "ClassName": pred_class_names,
+        "Class": predictions
     })
+
+    pred_df = pd.DataFrame(data=df_data)
     pred_df.to_csv(config["predictor"]["out_dir"])
+    print(config.resume)
+    print(pred_df.ClassName.value_counts())
 
 
 if __name__ == '__main__':

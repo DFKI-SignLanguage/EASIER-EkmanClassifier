@@ -7,7 +7,7 @@
   - ```-m / --model``` flag ==> path of the model to be used. Similar in function as the -r/--resume flag in train.py and test.py
   - ```-i / --input``` flag ==> path of the folder containing the images that need the predictions.
   - ```-o / --output``` flag ==> path and filename for the output csv file containing the predictions.
-  
+  - ```-c / --config``` flag ==> config.json used for training and testing (Ensure that the data loader in config.json that is passed to predict.py corresponds to the dataset that the model was trained on)
 Ex: ``` python predict.py -p --config config_temp.json -m saved/models/ResNet50-AffNet-nopreproc-210921/ResNet50_affectnet.pth -i /Users/chbh01/Documents/OfflineCodebases/DFKI_Hiwi/ACG/EASIER/Datasets/VeraAmMittags/video/VAM-frames-cropped -o vam-frames-cropped-squared-preds.csv ```
 
 # v1 Features
