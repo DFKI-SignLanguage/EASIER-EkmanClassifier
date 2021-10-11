@@ -74,7 +74,7 @@ def convert_images(in_dir: str, out_dir: str, tolerant: bool, square: bool, bbox
         else:
             # More faces?
             if len(face_list) > 1:
-                print("WARNING: more than one face detected: {}".format(len(face_list)))
+                print("WARNING: more than one face detected: {}. Using the first...".format(len(face_list)))
                 if not tolerant:
                     break
 
