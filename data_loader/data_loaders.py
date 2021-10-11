@@ -169,18 +169,21 @@ class PredictionDataset(Dataset):
 
         self.images_dir_path = os.path.join(data_path)
         self.image_inputs = [os.path.join(self.images_dir_path, img_name) for img_name in
-                             sorted(os.listdir(self.images_dir_path))]
+                             sorted(os.listdir(self.images_dir_path)) if ".jpg" in img_name or ".png" in img_name]
 
     def __getitem__(self, idx):
         inp_img_name = self.image_inputs[idx]
-        in_image = Image.open(inp_img_name)
+        in_image = Image.open(inp_img_name).convert('RGB')
 
         size = 224, 224  # Fixed to Resnet input size
-        in_image.thumbnail(size, Image.ANTIALIAS)
 
-        tensor_trsnfrm = transforms.ToTensor()
+        tensor_trsnfrm = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Resize(size),
+        ])
         in_image = tensor_trsnfrm(in_image)
         img_name = os.path.split(inp_img_name)[1]
+
         return in_image, img_name
 
     # getitem setup for loading pretrained model from asavchenko
