@@ -8,11 +8,11 @@
   "data_loader": {
     "type": "FaceExpressionPhoenixDataLoader",
     "args": {
-      "data_dir": "/ds/images/FaceExpressionPhoenix",
-      "batch_size": 64,
+      "data_dir": "/Users/chbh01/Documents/OfflineCodebases/DFKI_Hiwi/ACG/EASIER/Datasets/FePh",
+      "batch_size": 2,
       "shuffle": true,
       "validation_split": 0.1,
-      "num_workers": 2,
+      "num_workers": 0,
       "training": true
     }
   },
@@ -41,7 +41,7 @@
   },
   "trainer": {
     "epochs": 30,
-    "save_dir": "/netscratch/bhuvaneshwara/saved/",
+    "save_dir": "saved/",
     "save_period": 1,
     "verbosity": 2,
     "monitor": "min val_loss",
@@ -51,7 +51,7 @@
     "evaluation_store": {
     "type": "Evaluator",
     "args": {
-      "save_dir": "/netscratch/bhuvaneshwara/saved/",
+      "save_dir": "saved/",
       "training": true
     },
     "metrics": [
