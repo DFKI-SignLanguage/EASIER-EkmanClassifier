@@ -53,9 +53,9 @@ class FaceExpressionPhoenixDataset(Dataset):
 
     def __init__(self, data_path, training=True, transform=None, target_transform=None):
 
-        # https://www.researchgate.net/publication/340049545_Facial_Expression_Phoenix_FePh_An_Annotated_Sequenced_Dataset_for_Facial_and_Emotion-Specified_Expressions_in_Sign_Language
         self.data_path = data_path
-        self.images_dir_path = os.path.join(data_path, 'FePh_images')
+        # self.images_dir_path = os.path.join(data_path, 'FePh_images')
+        self.images_dir_path = os.path.join(data_path, 'FePh_images-cropped')
 
         if training:
             self.labels_csv_path = os.path.join(data_path, 'FePh_train.csv')
@@ -67,7 +67,7 @@ class FaceExpressionPhoenixDataset(Dataset):
         self.target_transform = target_transform
 
         y_df = pd.read_csv(self.labels_csv_path, dtype=str)
-        y_df = y_df.head(350)
+        # y_df = y_df.head(350)
         # Removing all data points with 'Face_not_visible' i.e no labels
         y_df.dropna(inplace=True)
         # Extracting multiple labels

@@ -12,7 +12,7 @@ class Evaluator:
     evaluator that can save train, val and test evaluation results
     """
 
-    def __init__(self, config, data_loader, device):
+    def __init__(self, config, data_loader=None, device="cpu"):
         self.eval_columns = ["Timestamp", "Architecture", "Training set split",
                              "Hyper-params", "Epochs", "Validation set split",
                              "Validation Accuracy", "Validation Balanced Accuracy",
@@ -23,26 +23,43 @@ class Evaluator:
                              "Total Training time", "Validation Prediction Time", "Test Prediction Time", "TensorBoard"]
         self.eval_df = pd.DataFrame(columns=self.eval_columns)
         self.data_loader = data_loader
-        self.idx_to_class = self.data_loader.dataset.idx_to_class
+        self.config = config
+        if self.data_loader is not None:
+            self.idx_to_class = self.data_loader.dataset.idx_to_class
+            self.validation_split = self.data_loader.validation_split
+
+
         self.device = device
         self.loss_fn = getattr(module_loss, config['loss'])
-
-        # TODO load metric ftns from static. No need for config
-        self.metric_ftns = [getattr(module_metric, met) for met in config['evaluation_store']['metrics']]
         self._save_dir = config.save_eval_dir
-        self.config = config
 
         self.timestamp = self.config.run_id
         self.model_architecture = self.config["arch"]["type"]
-        self.validation_split = self.data_loader.validation_split
         self.train_epochs = self.config["trainer"]["epochs"]
+        self.tensorboard_dir = self.config.log_dir
+        self.metric_ftns = [getattr(module_metric, met) for met in [
+            "accuracy",
+            "balanced_accuracy",
+            "sensitivity_per_class"
+        ]]
+
         self.training_time = "0"
         self.pred_time = "0"
-        self.tensorboard_dir = self.config.log_dir
-
+        self.model_pred_idx_to_dataset_idx = None
         self.metrics_results = None
 
+    def convert_idx_to_dataset(self, model_pred_idx):
+        self.model_pred_idx_to_dataset_idx = {}
+        for i in range(len(model_pred_idx)):
+            model_pred_class = model_pred_idx[i]
+            for j in range(len(self.idx_to_class)):
+                test_dataset_class = self.idx_to_class[j]
+                if model_pred_class == test_dataset_class:
+                    self.model_pred_idx_to_dataset_idx[i] = j
+
     def evaluate_model(self, model):
+
+        assert self.data_loader is not None
 
         model.eval()
         metrics = {}
@@ -63,14 +80,35 @@ class Evaluator:
                 outputs.append(output)
                 targets.append(target)
 
+        # if self.model_pred_idx_to_dataset_idx is not None:
+        #     keys_to_del = []
+        #     for k in self.idx_to_class.keys():
+        #         if k not in self.model_pred_idx_to_dataset_idx.keys():
+        #             keys_to_del.append(k)
+        #     del self.idx_to_class[k]
+
         output = torch.Tensor(np.concatenate(outputs, axis=0))
         target = torch.Tensor(np.concatenate(targets, axis=0))
+
+        if self.model_pred_idx_to_dataset_idx is not None:
+            output = output.cpu().numpy()
+            target = target.cpu().numpy()
+
+            output = np.argmax(output, axis=1)
+            dataset_output = []
+            updated_targets = []
+            for i in range(len(output)):
+                if output[i] in self.model_pred_idx_to_dataset_idx.keys():
+                    dataset_output.append(self.model_pred_idx_to_dataset_idx[output[i]])
+                    updated_targets.append(target[i])
+            output = torch.tensor(np.eye(len(self.idx_to_class))[dataset_output])
+            target = torch.tensor(updated_targets)
+
         for met in self.metric_ftns:
-            # TODO Convert list of per class values from _per_class metric ftns to dict outside the metrics ftns
             curr_metric_out = met(output, target)
             try:
                 iter(curr_metric_out)
-                curr_metric_out = {self.idx_to_class[i]: curr_metric_out[i] for i in range(len(curr_metric_out))}
+                curr_metric_out = {self.idx_to_class[i]: curr_metric_out[i] for i in range(len(self.idx_to_class))}
             except TypeError:
                 pass
             curr_metric_out = {met.__name__: curr_metric_out}
@@ -80,16 +118,73 @@ class Evaluator:
         self.metrics_results = {'loss': total_loss / n_samples}
         self.metrics_results.update(metrics)
 
-    def load_val_eval_df(self):
-        checkpoint_model_path = self.config.resume
-        split = os.path.split
-        timestamp = split(split(checkpoint_model_path)[0])[1]
-        updated_save_dir = Path((os.path.split(self._save_dir)[0])) / timestamp
-        self.config._save_eval_dir = updated_save_dir
-        self._save_dir = updated_save_dir
+    def evaluate_csv(self, predictions_csv, ground_truths_csv):
+        self.metrics_results = {}
 
-        self.config.run_id = timestamp
-        self.timestamp = timestamp
+        metrics = {}
+        preds_df = pd.read_csv(predictions_csv, index_col=0)
+        truths_df = pd.read_csv(ground_truths_csv, index_col=0)
+
+        if self.model_pred_idx_to_dataset_idx is not None:
+            keys_to_del = []
+            for k in self.idx_to_class.keys():
+                if k not in self.model_pred_idx_to_dataset_idx.keys():
+                    keys_to_del.append(k)
+            for k in keys_to_del:
+                del self.idx_to_class[k]
+
+        outputs = preds_df.iloc[:, 1: len(self.idx_to_class.values())].values
+        targets = truths_df.Class.values
+
+        output = torch.Tensor(outputs)
+        target = torch.Tensor(targets)
+
+        if self.model_pred_idx_to_dataset_idx is not None:
+            output = output.cpu().numpy()
+            target = target.cpu().numpy()
+
+            output = np.argmax(output, axis=1)
+            dataset_output = []
+            updated_targets = []
+            for i in range(len(output)):
+                if output[i] in self.model_pred_idx_to_dataset_idx.keys():
+                    dataset_output.append(self.model_pred_idx_to_dataset_idx[output[i]])
+                    updated_targets.append(target[i])
+            output = torch.tensor(np.eye(len(self.idx_to_class))[dataset_output])
+            target = torch.tensor(updated_targets)
+
+        for met in self.metric_ftns:
+            curr_metric_out = met(output, target)
+            try:
+                iter(curr_metric_out)
+                curr_metric_out = {self.idx_to_class[i]: curr_metric_out[i] for i in range(len(self.idx_to_class))}
+            except TypeError:
+                pass
+            curr_metric_out = {met.__name__: curr_metric_out}
+            metrics.update(curr_metric_out)
+
+        self.metrics_results.update(metrics)
+
+    def load_val_eval_df(self):
+
+        if (hasattr(self.config, "resume") and self.config.resume is not None):
+            checkpoint_model_path = self.config.resume
+            split = os.path.split
+            timestamp = split(split(checkpoint_model_path)[0])[1]
+            updated_save_dir = Path((os.path.split(self._save_dir)[0])) / timestamp
+            self.config._save_eval_dir = updated_save_dir
+            self._save_dir = updated_save_dir
+
+            self.config.run_id = timestamp
+            self.timestamp = timestamp
+        elif ("csv_predictor" in self.config.config.keys()):
+            timestamp = self.config["csv_predictor"]["model_preds"].split("/")[-1].split(".csv")[0]
+            updated_save_dir = Path((os.path.split(self._save_dir)[0])) / timestamp
+            self.config._save_eval_dir = updated_save_dir
+            self._save_dir = updated_save_dir
+
+            self.config.run_id = timestamp
+            self.timestamp = timestamp
 
         try:
             self.eval_df = pd.read_csv(self._save_dir / "eval.csv")
@@ -118,21 +213,20 @@ class Evaluator:
             new_row = pd.DataFrame(new_row_dict, index=[0])
             self.eval_df = self.eval_df.append(new_row)
         elif type_eval == "test":
+
             row_dict = {
                 "Timestamp": self.timestamp,
                 "Test set split": "To be calculated",
                 "Test Accuracy": self.metrics_results["accuracy"],
-                "Test Balanced Accuracy": self.metrics_results["balanced_accuracy"],
-                "se anger": self.metrics_results["sensitivity_per_class"]["anger"],
-                "se none": self.metrics_results["sensitivity_per_class"]["none"],
-                "se disgust": self.metrics_results["sensitivity_per_class"]["disgust"],
-                "se fear": self.metrics_results["sensitivity_per_class"]["fear"],
-                "se happy": self.metrics_results["sensitivity_per_class"]["happy"],
-                "se sad": self.metrics_results["sensitivity_per_class"]["sad"],
-                "se surprise": self.metrics_results["sensitivity_per_class"]["surprise"],
-                "se neutral": self.metrics_results["sensitivity_per_class"]["neutral"],
-                "Test Prediction Time": self.pred_time
+                "Test Balanced Accuracy": self.metrics_results["balanced_accuracy"]
             }
+            se_dict = {"se " + k: self.metrics_results["sensitivity_per_class"][k] for k in self.idx_to_class.values()}
+
+            row_dict.update(se_dict)
+
+            row_dict.update({
+                "Test Prediction Time": self.pred_time
+            })
             new_row = pd.DataFrame(row_dict, index=[0])
             self.eval_df = self.eval_df.combine_first(new_row)[self.eval_columns]
         else:
@@ -144,5 +238,3 @@ class Evaluator:
             os.makedirs(self._save_dir)
             self.eval_df.to_csv(self._save_dir / "eval.csv")
         # self.eval_df.to_csv(self._save_dir / "eval.csv")
-
-

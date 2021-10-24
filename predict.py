@@ -18,7 +18,7 @@ import data_loader.data_loaders as module_data
 
 
 def main(config):
-    logger = config.get_logger('predict')
+    # logger = config.get_logger('predict')
 
     # setup data_loader instances
     pred_dataset = PredictionDataset(config["predictor"]["in_dir"], getattr(module_data, config['data_loader']['type']))
@@ -27,11 +27,11 @@ def main(config):
 
     # build model architecture
     model = config.init_obj('arch', module_arch)
-    logger.info(model)
+    # logger.info(model)
 
     # get function handles of loss and metrics
 
-    logger.info('Loading checkpoint: {} ...'.format(config.resume))
+    # logger.info('Loading checkpoint: {} ...'.format(config.resume))
     checkpoint = torch.load(config.resume, map_location='cpu')
     state_dict = checkpoint['state_dict']
     if config['n_gpu'] > 1:

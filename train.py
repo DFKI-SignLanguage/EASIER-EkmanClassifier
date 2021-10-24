@@ -35,6 +35,8 @@ def execute_and_time_fn(fn, human_readable=True):
 
 def main(config):
     logger = config.get_logger('train')
+    config.mk_save_dir()
+    config.mk_save_eval_dir()
 
     # setup data_loader instances
     data_loader = config.init_obj('data_loader', module_data)

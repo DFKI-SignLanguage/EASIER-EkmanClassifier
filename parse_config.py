@@ -37,11 +37,11 @@ class ConfigParser:
 
         # make directory for saving checkpoints and log and evaluation metrics.
         exist_ok = run_id == ''
-        self.save_dir.mkdir(parents=True, exist_ok=exist_ok)
+        # self.save_dir.mkdir(parents=True, exist_ok=exist_ok)
         self.log_dir.mkdir(parents=True, exist_ok=exist_ok)
 
         # save updated config file to the checkpoint dir
-        write_json(self.config, self.save_dir / 'config.json')
+        # write_json(self.config, self.save_dir / 'config.json')
 
         # configure logging module
         setup_logging(self.log_dir)
@@ -64,9 +64,9 @@ class ConfigParser:
             if hasattr(args, "predict"):
                 args.resume = args.model
 
-        if args.device is not None:
+        if hasattr(args, "device") and args.device is not None:
             os.environ["CUDA_VISIBLE_DEVICES"] = args.device
-        if args.resume is not None:
+        if hasattr(args, "resume") and args.resume is not None:
             resume = Path(args.resume)
             cfg_fname = resume.parent / 'config.json'
         else:
@@ -89,6 +89,40 @@ class ConfigParser:
                     }
             }
             config.update(predictor)
+
+        if hasattr(args, "resume"):
+            test_predictor = {
+                "test_predictor":
+                    {
+                        "model_preds_data_loader": {
+                            "type": args.model_preds_data_loader
+                        },
+                        "ground_truths_data_loader":
+                            {
+                                "type": args.ground_truths_data_loader
+                            }
+                    },
+
+            }
+            config.update(test_predictor)
+
+        if hasattr(args, "model_preds") and hasattr(args, "ground_truths"):
+            csv_predictor = {
+                "csv_predictor":
+                    {
+                        "model_preds": args.model_preds,
+                        "ground_truths": args.ground_truths,
+                        "model_preds_data_loader": {
+                            "type": args.model_preds_data_loader
+                        },
+                        "ground_truths_data_loader":
+                            {
+                                "type": args.ground_truths_data_loader
+                            }
+                    },
+
+            }
+            config.update(csv_predictor)
 
         # parse custom cli options into dictionary
         modification = {opt.target: getattr(args, _get_opt_name(opt.flags)) for opt in options}
@@ -153,10 +187,15 @@ class ConfigParser:
     def log_dir(self):
         return self._log_dir
 
-    def mk_eval_dir(self):
+    def mk_save_dir(self):
         exist_ok = self.run_id == ''
-        if self.config["evaluation_store"]["args"]["training"]:
-            self.save_eval_dir.mkdir(parents=True, exist_ok=exist_ok)
+        self.save_dir.mkdir(parents=True, exist_ok=exist_ok)
+        write_json(self.config, self.save_dir / 'config.json')
+
+    def mk_save_eval_dir(self):
+        exist_ok = self.run_id == ''
+        self.save_eval_dir.mkdir(parents=True, exist_ok=exist_ok)
+
 
 # helper functions to update config dict with custom cli options
 def _update_config(config, modification):

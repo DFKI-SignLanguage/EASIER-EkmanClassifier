@@ -20,6 +20,7 @@ import datetime
 
 def main(config):
     logger = config.get_logger('test')
+    # config.mk_save_eval_dir()
 
     # setup data_loader instances
     data_loader = getattr(module_data, config['data_loader']['type'])(
@@ -48,8 +49,11 @@ def main(config):
     model.eval()
 
     evaluator = Evaluator(config, data_loader, device)
-
+    evaluator.idx_to_class = getattr(module_data, config["test_predictor"]['ground_truths_data_loader']['type']).get_label_map()
     evaluator.load_val_eval_df()
+
+    model_preds_idx_to_class = getattr(module_data, config["test_predictor"]['model_preds_data_loader']['type']).get_label_map()
+    evaluator.convert_idx_to_dataset(model_preds_idx_to_class)
 
     start = timer()
     evaluator.evaluate_model(model)
@@ -72,6 +76,14 @@ if __name__ == '__main__':
                       help='path to latest checkpoint (default: None)')
     args.add_argument('-d', '--device', default=None, type=str,
                       help='indices of GPUs to enable (default: all)')
+    # args.add_argument('-t', '--ground_truths', default=None, type=str,
+    #                   help="path to csv file with emotion ground truths")
+    args.add_argument('-g', '--ground_truths_data_loader', default=None, type=str,
+                      help="flag that specifies the data loader that contains the prediction labels in the style of "
+                           "the supplied ground truth csv")
+    args.add_argument('-m', '--model_preds_data_loader', default=None, type=str,
+                      help="flag that specifies the data loader that contains the prediction labels in the style of "
+                           "that the model was trained on")
 
     config = ConfigParser.from_args(args)
     main(config)
