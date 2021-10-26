@@ -6,7 +6,7 @@ import model.loss as module_loss
 from pathlib import Path
 import os
 
-
+# TODO Make evaluator run with and without config. To be used in test csv
 class Evaluator:
     """
     evaluator that can save train, val and test evaluation results
@@ -57,6 +57,7 @@ class Evaluator:
                 if model_pred_class == test_dataset_class:
                     self.model_pred_idx_to_dataset_idx[i] = j
 
+    # TODO Ensure that predictions from loaded model are constant
     def evaluate_model(self, model):
 
         assert self.data_loader is not None

@@ -16,7 +16,7 @@ import data_loader.data_loaders as module_data
 # temp = pathlib.PosixPath
 # pathlib.PosixPath = pathlib.WindowsPath
 
-
+# TODO: Enable this script to load asavchenko models as well
 def main(config):
     # logger = config.get_logger('predict')
 

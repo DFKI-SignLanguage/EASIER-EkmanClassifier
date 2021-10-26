@@ -112,7 +112,8 @@ datasets/
 __MACOSX/
 .DS_Store
 
-config_temp.json
+temp/config/config_temp.json
 
 *.csv
-/pred_results/
+/temp/pred_results/
+/temp/

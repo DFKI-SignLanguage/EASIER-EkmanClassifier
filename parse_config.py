@@ -8,6 +8,14 @@ from logger import setup_logging
 from utils import read_json, write_json
 
 
+# TODO Move file from top level to another folder
+# TODO Idea to solve config parser problems: Maybe create another config parser (for predict and test_csv) that is
+#  similar to the one used for training and testing
+# TODO Make the flags similar in all the scripts
+# TODO Ensure saving models and testing does not create unnecessary folders
+# TODO Allow users to input save location either in config or as arg  ==> If nothing is specified use default locations
+# TODO Try to move as many of the arguments as possible to config
+# TODO Check if log is required or not. If not, get rid of it.
 class ConfigParser:
     def __init__(self, config, resume=None, modification=None, run_id=None):
         """
@@ -61,6 +69,7 @@ class ConfigParser:
         if not isinstance(args, tuple):
             args = args.parse_args()
             # making the -m or --model flag (predict.py) compatible with -r or --resume (train.py & test.py)
+            # TODO replace resume argument with model argument permanently
             if hasattr(args, "predict"):
                 args.resume = args.model
 

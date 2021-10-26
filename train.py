@@ -22,6 +22,11 @@ torch.backends.cudnn.benchmark = False
 np.random.seed(SEED)
 
 
+# TODO Update main README.md
+# TODO delete Readme_new_features.md
+# TODO Finalize one requirements file
+
+
 def execute_and_time_fn(fn, human_readable=True):
     start = timer()
     fn()
