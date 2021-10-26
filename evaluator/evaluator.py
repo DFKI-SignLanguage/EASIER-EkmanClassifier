@@ -134,7 +134,10 @@ class Evaluator:
                 del self.idx_to_class[k]
 
         outputs = preds_df.iloc[:, 1: len(self.idx_to_class.values())].values
-        targets = truths_df.Class.values
+        try:
+            targets = truths_df.Class.values
+        except AttributeError:
+            targets = truths_df.Facial_label.values
 
         output = torch.Tensor(outputs)
         target = torch.Tensor(targets)

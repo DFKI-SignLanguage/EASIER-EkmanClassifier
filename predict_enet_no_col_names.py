@@ -96,7 +96,7 @@ if __name__ == '__main__':
     args.add_argument('-o', '--output', default=None, type=str, required=True,
                       help='path to a CSV file that will contain the predictions.'
                            ' CSV header is ["imgname", "neutral", "anger", "disgust", "fear", "happy", "sad", "surprise", "none"].'
-                           ' Data is in raw, unnormalized format ')
+                           ' Data is in 1-hot format ')
 
     config = ConfigParser.from_args(args)
 

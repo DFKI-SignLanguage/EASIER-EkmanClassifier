@@ -90,7 +90,7 @@ class ConfigParser:
             }
             config.update(predictor)
 
-        if hasattr(args, "resume"):
+        if hasattr(args, "resume") and hasattr(args, "ground_truths_data_loader"):
             test_predictor = {
                 "test_predictor":
                     {

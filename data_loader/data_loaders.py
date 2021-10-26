@@ -148,7 +148,7 @@ class FaceExpressionPhoenixDataLoader(BaseDataLoader):
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.6374226, 0.5848234, 0.56568706], std=[0.20125638, 0.22521368, 0.2639905]),
-            transforms.Resize((224, 224)),
+            # transforms.Resize((224, 224)),
         ])
         self.data_dir = data_dir
 
@@ -347,3 +347,76 @@ class AffectNetDataLoader(DataLoader):
     @staticmethod
     def get_label_map():
         return AffectNet.idx_to_class
+        # return {0: 'anger', 1: 'disgust', 2: 'fear', 3: 'happy', 4: 'neutral', 5: 'sad', 6: 'surprise'}
+
+
+
+class AsavchenkoB07DataLoader(DataLoader):
+    """
+    AffectNet data loading demo using DataLoader
+    validation_split does nothing. included for compatibility with other loaders
+    """
+
+    def __init__(self, data_dir, batch_size, training=True, shuffle=True, num_workers=1, validation_split=0.0):
+
+        self.validation_split = 0
+        self.training = training
+
+        trsfm = transforms.Compose([
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+
+        val_trsfm = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+
+        if training:
+
+            self.dataset = AffectNet(os.path.join(data_dir, "train_set"), transform=trsfm)
+            self.val_dataset = AffectNet(os.path.join(data_dir, "val_set"), transform=val_trsfm)
+            weights = self.dataset.get_sampler_weights()
+            train_sampler = torch.utils.data.sampler.WeightedRandomSampler(weights=torch.DoubleTensor(weights),
+                                                                           num_samples=len(self.dataset))
+            shuffle = False
+        else:
+            trsfm = transforms.Compose([
+                transforms.ToTensor(),
+                # transforms.Resize((260, 260)),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            ])
+
+            self.dataset = AffectNet(os.path.join(data_dir, "val_set"), transform=val_trsfm)
+            train_sampler = None
+            shuffle = False
+
+        self.shuffle = shuffle
+
+        # self.val_data_dir = val_data_dir
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+
+        self.init_kwargs = {
+            'dataset': self.dataset,
+            'batch_size': self.batch_size,
+            'shuffle': shuffle,
+            'num_workers': self.num_workers,
+        }
+
+        super().__init__(sampler=train_sampler, **self.init_kwargs)
+
+    def split_validation(self):
+
+        init_kwargs = {
+            'batch_size': self.batch_size,
+            'shuffle': False,
+            'num_workers': self.num_workers,
+        }
+
+        return DataLoader(dataset=self.val_dataset, **init_kwargs)
+
+    @staticmethod
+    def get_label_map():
+        return {0: 'anger', 1: 'disgust', 2: 'fear', 3: 'happy', 4: 'neutral', 5: 'sad', 6: 'surprise'}
