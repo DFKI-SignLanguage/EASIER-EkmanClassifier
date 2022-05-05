@@ -21,6 +21,7 @@ def convert_images(in_dir: str, out_dir: str, tolerant: bool, square: bool, bbox
     For each image ending in a recognized format, detect the position of a face, crop the image,
     and save the cropped result in the destination directory.
 
+    :param square: If True, the face bounds will be extended to be squared.
     :param tolerant: If true, the iteration will continue on warnings, instead of stopping.
     :param out_dir: The output directory. Created if not existing.
     :param in_dir: Directory to scan. Will not be recursed.
