@@ -20,6 +20,10 @@ TODO
 
 ## Prediction
 
+Use the script `predict.py` to generate labels given an input model and new images.
+
+    python predict.py -p -c <path_to_training config_file.json> -m <path_to_trained_model.pth> -i <images_dir> -o <predictions.csv>
+
 Prediction results are in to format:
 
     ImageName,label1,label2,...,labelN,ClassName,Class
