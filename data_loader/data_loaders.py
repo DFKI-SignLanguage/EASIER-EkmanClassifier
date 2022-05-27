@@ -12,16 +12,18 @@ import glob
 from pathlib import Path
 
 # Classes expected to be in the first round of annotation on the EASIER project.
-EASIER_CLASSES = {
-    0: "Happiness",
-    1: "Sadness",
-    2: "Surprise",
-    3: "Fear",
-    4: "Anger",
-    5: "Disgust",
-    6: "Contempt",
-    7: "Other"
-}
+EASIER_CLASSES = [
+    "Happiness",
+    "Sadness",
+    "Surprise",
+    "Fear",
+    "Anger",
+    "Disgust",
+    "Contempt",
+    "Other",
+    "Neutral"  # This class is not explicitly annotated, but rather the default in case of no annotation.
+]
+EASIER_CLASSES_DICT = {i: c for i, c in enumerate(EASIER_CLASSES)}
 
 
 class MnistDataLoader(BaseDataLoader):

@@ -6,17 +6,23 @@ from mtcnn import MTCNN
 import PIL
 import PIL.Image
 from PIL.Image import Image
+from PIL import ImageDraw
 import numpy as np
 
 import os
+import math
 
 from typing import Tuple
 from typing import Optional
 
 IMAGE_FORMATS = set(('.png', '.PNG', '.jpg', '.JPG', '.jpeg', '.JPEG'))
 
+# If True, some visual information (dots, lines) are painted on the output image for visual debug purposes
+DEBUG_DRAW = False
 
-def convert_images(in_dir: str, out_dir: str, tolerant: bool, square: bool, bbox_scale: Optional[float]) -> None:
+
+def normalize_images(in_dir: str, out_dir: str,
+                     tolerant: bool, square: bool, bbox_scale: Optional[float], rotate: bool) -> None:
     """Scans files in a directory.
     For each image ending in a recognized format, detect the position of a face, crop the image,
     and save the cropped result in the destination directory.
@@ -34,7 +40,8 @@ def convert_images(in_dir: str, out_dir: str, tolerant: bool, square: bool, bbox
     for i, f in enumerate(files):
         print("Processing file {} '{}'".format(i, f))
 
-        if not f[-4:] in IMAGE_FORMATS:
+        _, ext = os.path.splitext(f)
+        if ext not in IMAGE_FORMATS:
             print("Not an image. skipping...")
             continue
 
@@ -60,6 +67,8 @@ def convert_images(in_dir: str, out_dir: str, tolerant: bool, square: bool, bbox
         else:
             assert False
 
+        #
+        # Ask MTCNN to find the faces
         # print(img_np.shape)
         face_list = detector.detect_faces(img_np)
         # print(face_list)
@@ -84,6 +93,11 @@ def convert_images(in_dir: str, out_dir: str, tolerant: bool, square: bool, bbox
             bbox = face['box']
             # bbox format is [x, y, width, height]
             x, y, width, height = bbox
+
+            # ... and take note of the eyes position
+            kpoints = face['keypoints']
+            eye_r = np.asarray(kpoints['right_eye'])
+            eye_l = np.asarray(kpoints['left_eye'])
 
             # Do we want a squared output?
             if square:
@@ -114,6 +128,23 @@ def convert_images(in_dir: str, out_dir: str, tolerant: bool, square: bool, bbox
                 height = round(height)
 
             img_cropped = img.crop((x, y, x + width, y + height))
+
+            # Bring eyes to cropped coordinates
+            eye_r[0] -= x
+            eye_l[0] -= x
+            eye_r[1] -= y
+            eye_l[1] -= y
+
+            if DEBUG_DRAW:
+                draw = ImageDraw.Draw(img_cropped)
+                draw.point([(eye_r[0], eye_r[1]), (eye_l[0], eye_l[1])])
+
+            if rotate:
+                # From Savchenko...
+                # theta=math.degrees(math.atan((right_eye_y-left_eye_y)/(right_eye_x-left_eye_x)))
+                theta = math.atan((eye_r[1] - eye_l[1]) / (eye_r[0] - eye_l[0]))
+                theta_degs = math.degrees(theta)
+                img_cropped = img_cropped.rotate(theta_degs)
 
             # Beware! If the image crop area is outside of the visible area, PIL (at least Pillow==8.3.1)
             # adds an alpha channel and sets the out bounds to black color with 0 on the alpha channel.
@@ -185,6 +216,9 @@ if __name__ == '__main__':
                         help='scaling factor for the bounding box around the face.'
                              ' Values > 1.0 will extend the box (zoom-out of the camera).'
                              ' Values < 1.0 will shrink the box (zoom-in of the camera).')
+    parser.add_argument('-r', '--rotate', action='store_true', default=False, required=False,
+                        help='If selected, the face, after being cropped, zoomed and squared, will be rotated '
+                             ' so that the eyes are horizontally aligned.')
     parser.add_argument('-i', '--input', default=None, type=str, required=True,
                         help='path to a directory of images to analyse')
     parser.add_argument('-o', '--output', default=None, type=str, required=True,
@@ -197,10 +231,12 @@ if __name__ == '__main__':
     tolerant = args.tolerant
     square = args.square
     bbox_scale = args.bbox_scale
+    rotate = args.rotate
 
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
-    convert_images(in_dir=indir, out_dir=outdir, tolerant=tolerant, square=square, bbox_scale=bbox_scale)
+    normalize_images(in_dir=indir, out_dir=outdir,
+                     tolerant=tolerant, square=square, bbox_scale=bbox_scale, rotate=rotate)
 
     print("Done.")
