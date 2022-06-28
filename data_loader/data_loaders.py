@@ -56,8 +56,8 @@ class FaceExpressionPhoenixDataset(Dataset):
     def __init__(self, data_path, training=True, transform=None, target_transform=None):
 
         self.data_path = data_path
-        # self.images_dir_path = os.path.join(data_path, 'FePh_images')
-        self.images_dir_path = os.path.join(data_path, 'FePh_images-cropped')
+        self.images_dir_path = os.path.join(data_path, 'FePh_images')
+        # self.images_dir_path = os.path.join(data_path, 'FePh_images-cropped')
 
         if training:
             self.labels_csv_path = os.path.join(data_path, 'FePh_train.csv')
@@ -150,7 +150,7 @@ class FaceExpressionPhoenixDataLoader(BaseDataLoader):
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.6374226, 0.5848234, 0.56568706], std=[0.20125638, 0.22521368, 0.2639905]),
-            # transforms.Resize((224, 224)),
+            transforms.Resize((224, 224)),
         ])
         self.data_dir = data_dir
 
@@ -242,13 +242,22 @@ class AffectNet(Dataset):
         # check if labels cache exists
         if not os.path.exists(cache_file):
             labels = []
+            # for im in self.images[:100]:
             for im in self.images:
                 base = Path(im).stem
                 exp = np.load(os.path.join(self.data_path, 'annotations', base + "_exp.npy"))
                 labels.append(int(exp))
-            np.save(cache_file, labels)
+            try:
+                np.save(cache_file, labels)
+            except OSError:
+                print("Cannot save affectnet labels cache file.")
 
-        self.labels = np.load(cache_file)
+        try:
+            self.labels = np.load(cache_file)
+
+        except FileNotFoundError:
+            self.labels = np.array(labels)
+
         self.num_classes = 8
 
     def get_sampler_weights(self):
@@ -295,12 +304,14 @@ class AffectNetDataLoader(DataLoader):
         trsfm = transforms.Compose([
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            transforms.Resize((224, 224)),
         ])
 
         val_trsfm = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            transforms.Resize((224, 224)),
         ])
 
         if training:
@@ -350,7 +361,6 @@ class AffectNetDataLoader(DataLoader):
     def get_label_map():
         return AffectNet.idx_to_class
         # return {0: 'anger', 1: 'disgust', 2: 'fear', 3: 'happy', 4: 'neutral', 5: 'sad', 6: 'surprise'}
-
 
 
 class AsavchenkoB07DataLoader(DataLoader):
