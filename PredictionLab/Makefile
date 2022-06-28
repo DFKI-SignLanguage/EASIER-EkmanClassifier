@@ -1,8 +1,5 @@
 # Root directory with the trained models
-MODELDIR=/Users/fanu01-admin/Nextcloud/Documents/Projects/EASIER/Models/ResNet50-AffNet-nopreproc-210921
-
-MODEL=$(MODELDIR)/model.pth
-CONFIG=$(MODELDIR)/config.json
+#MODELDIR=/Users/fanu01-admin/Nextcloud/Documents/Projects/EASIER/Models/ResNet50-AffNet-nopreproc-210921
 
 ifndef DATADIR
 $(error Environment variable DATADIR is not set. It must be the path to the data dir containing the "images" dir and the "labels.csv" file)
@@ -60,7 +57,7 @@ PREDICTIONS_NORMALIZED=$(OUT_DIR)/predictions-normalized.csv
 predict: $(PREDICTIONS) $(PREDICTIONS_NORMALIZED)
 
 $(PREDICTIONS): $(NORMALIZED_IMAGES) $(MODEL) $(CONFIG) | $(OUT_DIR)
-	python ../predict.py -p -c "$(CONFIG)" -m "$(MODEL)" -i "$<" -o "$@"
+	python ../predict.py -p -m "$(MODELDIR)" -i "$<" -o "$@"
 
 $(PREDICTIONS_NORMALIZED): $(PREDICTIONS) $(MODEL_LABEL_NORMALIZATION_MAP) | $(OUT_DIR)
 		PYTHONPATH=.. python ../Scripts/NormalizeLabels.py -i "$<" -m "$(MODEL_LABEL_NORMALIZATION_MAP)" -o "$@"

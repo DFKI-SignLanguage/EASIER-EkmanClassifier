@@ -87,23 +87,25 @@ def main(config):
     print(config.resume)
     print(pred_df.ClassName.value_counts())
 
+
 if __name__ == '__main__':
     args = argparse.ArgumentParser(description='Generates the predictions for a given (already trained) model.'
                                                'Predictions are in JSON format as dictionary')
-    args.add_argument('-c', '--config', default=None, type=str, required=True,
-                      help='config file path')
+    #args.add_argument('-c', '--config', default=None, type=str, required=True,
+    #                  help='config file path')
     args.add_argument('-d', '--device', default=None, type=str, required=False,
                       help='indices of GPUs to enable (default: all)')
-    args.add_argument('-p', "--predict", action="store_true", required=True)
 
-    args.add_argument('-m', '--model', default=None, type=str, required=True,
-                      help='path to binary saved prediction model')
+    args.add_argument('-p', "--predict", action="store_true", default=True, required=False)
+
+    args.add_argument('-m', '--modeldir', default=None, type=str, required=True,
+                      help='path to the directory containing the model and its configuration')
     args.add_argument('-i', '--input', default=None, type=str, required=True,
                       help='path to a directory of images to analyse')
     args.add_argument('-o', '--output', default=None, type=str, required=True,
                       help='path to a CSV file that will contain the predictions.'
-                           ' CSV header is ["imgname", "neutral", "anger", "disgust", "fear", "happy", "sad", "surprise", "none"].'
-                           ' Data is in 1-hot format ')
+                           ' CSV header is ["imgname", "expr1", "expr2", ..., "exprN", "ClassName", "Class"].'
+                           ' Expr data is in raw logit values (no softmax applied).')
 
     config = ConfigParser.from_args(args)
 

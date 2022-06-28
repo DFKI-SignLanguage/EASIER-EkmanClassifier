@@ -60,8 +60,8 @@ Where the DATADIR and the MODELDIR are structured like this:
     labels-normalization-map.json
 
 <MODELDIR>/
-    model.pth
-    config.json
+    model_best.pth                 -- The best model of your training session
+    config.json                    -- The same config used for training
     labels-normalization-map.json  -- This one coming from the dataset used for training
 ```
 
@@ -90,7 +90,8 @@ and:
      ["anger", "Anger"]
    ]
    ```
-   There is another map inside the model directory. Essentially, this is a copy of the map belonging to the dataset used for training this model. It is then used to normalize the predicted labels.
+
+   The `labels-normalization-map.json` map inside the MODELDIR is just a copy of the map belonging to the dataset used for training. It is used to normalize the predicted labels.
 
 The `images` folder contains the files listed in the `ImageName` column.
 
