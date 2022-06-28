@@ -109,7 +109,7 @@ saved/
 __MACOSX/
 .DS_Store
 
-config-temp.json
+train-configs
 
 
 
