@@ -4,7 +4,7 @@ import pandas
 
 from data_loader.data_loaders import EASIER_CLASSES
 
-REQUIRED_COLUMNS = ["ImageName", "ClassName", "Class"]
+REQUIRED_COLUMNS = ["ImageName"] + EASIER_CLASSES + ["ClassName", "Class"]
 
 parser = argparse.ArgumentParser(description='Normalize the labels of a dataframe to the EASIER standard order.'
                                              'The source CSV must contain the following three columns: ImageName, ClassName, Class.')
@@ -37,15 +37,13 @@ for i, (src_label, dst_label) in enumerate(normalization_map):
     src_label_to_id[src_label] = i
     src_label_to_label[src_label] = dst_label
 
-print("Normalization dictionaries:")
-print(src_label_to_id)
-print(src_label_to_label)
-
-
 dst_label_to_id = dict()
 for i, easier_label in enumerate(EASIER_CLASSES):
     dst_label_to_id[easier_label] = i
 
+print("Normalization dictionaries:")
+print(src_label_to_id)
+print(src_label_to_label)
 print(dst_label_to_id)
 
 #
@@ -55,6 +53,7 @@ source_df = pandas.read_csv(source_csv)
 
 print(source_df.head())
 
+# Prepare the output CSV
 dest_df = pandas.DataFrame(columns=REQUIRED_COLUMNS)
 
 for i, row in enumerate(source_df.itertuples()):
@@ -73,19 +72,28 @@ for i, row in enumerate(source_df.itertuples()):
 
     dst_label_idx = dst_label_to_id[dst_label]
 
-    # Check consistency between label and idy
+    # Fill the prediction value columns
+    # Compose the labels dictionary. By default, values to n/a.
+    dst_row_dict = {label: float('nan') for label in EASIER_CLASSES}
+    for src_pred_lab, dst_pred_lab in src_label_to_label.items():
+        pred = getattr(row, src_pred_lab)
+        dst_row_dict[dst_pred_lab] = pred
+
+    # Check consistency between label and idx
     if idx != src_label_to_id[label]:
         print(" WARNING!!! Line {}: For label '{}' there is a wrong corresponding ID. Expected {}, found {}.".format(i, label, src_label_to_id[label], idx))
 
-    dest_df = dest_df.append({
+    dst_row_dict.update({
         "ImageName": image_name,
         "ClassName": dst_label,
         "Class": dst_label_idx
-    }, ignore_index=True)
+    })
+
+    dest_df = dest_df.append(dst_row_dict, ignore_index=True)
 
 
 # Save to file
-dest_df.to_csv(path_or_buf=destination_csv, header=True, index=False)
+dest_df.to_csv(path_or_buf=destination_csv, header=True, index=False, na_rep=str(float('nan')))
 
 
 print("All done.")

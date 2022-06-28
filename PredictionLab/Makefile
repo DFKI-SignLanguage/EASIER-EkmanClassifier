@@ -35,10 +35,12 @@ all:
 	@echo "make video - concatenate all the normalized images into a video with the predicted label in overlay"
 	@echo "Output will be written to dir $(OUT_DIR)"
 
+
 #
 # Normalizing
 normalize: $(NORMALIZED_IMAGES) $(NORMALIZED_LABELS)
 
+# Normalize the images of the tested data
 $(NORMALIZED_IMAGES): $(IMAGES)
 	python ../Scripts/NormalizeImages.py \
 		-i "$<" \
@@ -46,8 +48,10 @@ $(NORMALIZED_IMAGES): $(IMAGES)
 		--square --rotate --tolerant
 	touch "$@"
 
+# Normalize the labels of the tested data
 $(NORMALIZED_LABELS): $(LABELS) $(DATA_LABEL_NORMALIZATION_MAP)
 	PYTHONPATH=.. python ../Scripts/NormalizeLabels.py -i "$<" -m "$(DATA_LABEL_NORMALIZATION_MAP)" -o "$@"
+
 
 #
 # Predictions
