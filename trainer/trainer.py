@@ -66,7 +66,8 @@ class Trainer(BaseTrainer):
                     epoch,
                     self._progress(batch_idx),
                     loss.item()))
-                self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+                # TODO Decide if images are required in tensorboard logs
+                # self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
             if batch_idx == self.len_epoch:
                 break
@@ -81,7 +82,8 @@ class Trainer(BaseTrainer):
             try:
                 iter(curr_metric_out)
                 curr_metric_out = {self.idx_to_class[i]: curr_metric_out[i] for i in range(len(curr_metric_out))}
-                self.train_metrics.update_per_class(met.__name__, curr_metric_out)
+                # TODO: Decide if per_class metric plots are required in tensorbaord
+                # self.train_metrics.update_per_class(met.__name__, curr_metric_out)
             except TypeError:
                 self.train_metrics.update(met.__name__, curr_metric_out)
 
@@ -118,7 +120,8 @@ class Trainer(BaseTrainer):
                 outputs.append(output)
                 targets.append(target)
 
-                self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+                #TODO Decide if images are required in tensorboard logs
+                # self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
         self.writer.set_step(epoch, 'valid')
         self.valid_metrics.update('loss', loss.item())
@@ -129,13 +132,16 @@ class Trainer(BaseTrainer):
             try:
                 iter(curr_metric_out)
                 curr_metric_out = {self.idx_to_class[i]: curr_metric_out[i] for i in range(len(curr_metric_out))}
-                self.valid_metrics.update_per_class(met.__name__, curr_metric_out)
+                # TODO: Decide if per_class metric plots are required in tensorbaord
+                # self.valid_metrics.update_per_class(met.__name__, curr_metric_out)
             except TypeError:
                 self.valid_metrics.update(met.__name__, curr_metric_out)
 
+        # TODO Decide if hists are required in tensorboard logs
         # add histogram of model parameters to the tensorboard
-        for name, p in self.model.named_parameters():
-            self.writer.add_histogram(name, p, bins='auto')
+        # for name, p in self.model.named_parameters():
+        #     self.writer.add_histogram(name, p, bins='auto')
+
         return self.valid_metrics.result()
 
     def _progress(self, batch_idx):

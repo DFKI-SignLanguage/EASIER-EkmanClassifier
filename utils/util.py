@@ -86,6 +86,7 @@ class MetricTracker:
                                                               self._data_per_class[cls_key + "_counts"][key]
 
     def result(self):
+        #TODO: Decide if per_class metric plots are required in tensorbaord
         avg = dict(self._data.average)
         col_avg_names = [lab + "_average" for lab in self.label_names]
 
