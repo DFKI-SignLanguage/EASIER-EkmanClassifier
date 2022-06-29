@@ -19,8 +19,6 @@ CONFIG_FILE = "config.json"
 # TODO Make the flags similar in all the scripts
 # TODO Ensure saving models and testing does not create unnecessary folders
 # TODO Allow users to input save location either in config or as arg  ==> If nothing is specified use default locations
-# TODO Try to move as many of the arguments as possible to config
-# TODO Check if log is required or not. If not, get rid of it.
 class ConfigParser:
     def __init__(self, config, resume=None, modification=None, run_id=None):
         """
@@ -39,22 +37,22 @@ class ConfigParser:
         save_dir = Path(self.config['trainer']['save_dir'])
         save_eval_dir = Path(self.config['evaluation_store']['args']['save_dir'])
 
+        # TODO: Save info as
+        #  saved/exper_name/run_id/testset_pred
+
         exper_name = self.config['name']
         if run_id is None:  # use timestamp as default run-id
-            run_id = datetime.now().strftime(r'%m%d_%H%M%S')
+            run_id = datetime.now().strftime(r'%Y%m%d_%H%M%S')
         self.run_id = run_id
-        self._save_dir = save_dir / 'models' / exper_name / run_id
-        self._log_dir = save_dir / 'log' / exper_name / run_id
+        self._save_dir = save_dir / "_".join([exper_name, run_id]) / 'models'
+        self._log_dir = save_dir / "_".join([exper_name, run_id]) / 'log'
 
-        self._save_eval_dir = save_eval_dir / "eval" / exper_name / run_id
+        self._save_eval_dir = save_eval_dir / "_".join([exper_name, run_id]) / "eval"
 
         # make directory for saving checkpoints and log and evaluation metrics.
         exist_ok = run_id == ''
         # self.save_dir.mkdir(parents=True, exist_ok=exist_ok)
         self.log_dir.mkdir(parents=True, exist_ok=exist_ok)
-
-        # save updated config file to the checkpoint dir
-        # write_json(self.config, self.save_dir / 'config.json')
 
         # configure logging module
         setup_logging(self.log_dir)
@@ -73,8 +71,6 @@ class ConfigParser:
             args.add_argument(*opt.flags, default=None, type=opt.type)
         if not isinstance(args, tuple):
             args = args.parse_args()
-
-        print("DDD PREDICT", args.predict)
 
         if hasattr(args, "device") and args.device is not None:
             os.environ["CUDA_VISIBLE_DEVICES"] = args.device
@@ -134,13 +130,7 @@ class ConfigParser:
                     {
                         "model_preds": args.model_preds,
                         "ground_truths": args.ground_truths,
-                        "model_preds_data_loader": {
-                            "type": args.model_preds_data_loader
-                        },
-                        "ground_truths_data_loader":
-                            {
-                                "type": args.ground_truths_data_loader
-                            }
+                        # "normalized_label_map": args.normalized_label_map
                     },
 
             }
