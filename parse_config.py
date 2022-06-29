@@ -8,6 +8,11 @@ from logger import setup_logging
 from utils import read_json, write_json
 
 
+# Standard file names for models stored in standalone directory
+MODEL_BIN = "model_best.pth"
+CONFIG_FILE = "config.json"
+
+
 # TODO Move file from top level to another folder
 # TODO Idea to solve config parser problems: Maybe create another config parser (for predict and test_csv) that is
 #  similar to the one used for training and testing
@@ -68,24 +73,32 @@ class ConfigParser:
             args.add_argument(*opt.flags, default=None, type=opt.type)
         if not isinstance(args, tuple):
             args = args.parse_args()
-            # making the -m or --model flag (predict.py) compatible with -r or --resume (train.py & test.py)
-            # TODO replace resume argument with model argument permanently
-            if hasattr(args, "predict"):
-                args.resume = args.model
+
+        print("DDD PREDICT", args.predict)
 
         if hasattr(args, "device") and args.device is not None:
             os.environ["CUDA_VISIBLE_DEVICES"] = args.device
+
+        cfg_fname = None
         if hasattr(args, "resume") and args.resume is not None:
             resume = Path(args.resume)
             cfg_fname = resume.parent / 'config.json'
+        elif hasattr(args, "modeldir") and args.modeldir is not None:
+            # Filenames for self-contained trained model
+            model_dir_path = Path(args.modeldir)
+            resume = model_dir_path / MODEL_BIN
+            cfg_fname = model_dir_path / CONFIG_FILE
         else:
             msg_no_cfg = "Configuration file need to be specified. Add '-c config.json', for example."
             assert args.config is not None, msg_no_cfg
             resume = None
             cfg_fname = Path(args.config)
 
+        # Load the "default" config
         config = read_json(cfg_fname)
-        if args.config and resume:
+
+        # If specified, merge the config with the one specified in the command line
+        if hasattr(args, "config") and resume:
             # update new config for fine-tuning
             config.update(read_json(args.config))
 
