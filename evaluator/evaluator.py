@@ -6,7 +6,7 @@ import model.loss as module_loss
 from pathlib import Path
 import os
 
-# TODO Make evaluator run with and without config. To be used in test csv
+
 class Evaluator:
     """
     evaluator that can save train, val and test evaluation results
@@ -27,7 +27,6 @@ class Evaluator:
         if self.data_loader is not None:
             self.idx_to_class = self.data_loader.dataset.idx_to_class
             self.validation_split = self.data_loader.validation_split
-
 
         self.device = device
         self.loss_fn = getattr(module_loss, config['loss'])
@@ -56,6 +55,13 @@ class Evaluator:
                 test_dataset_class = self.idx_to_class[j]
                 if model_pred_class == test_dataset_class:
                     self.model_pred_idx_to_dataset_idx[i] = j
+
+    def _set_idx_to_labels(self, truths_df):
+
+        unique_idxs = sorted(truths_df.Class.unique().tolist())
+        self.idx_to_class = {}
+        for idx in unique_idxs:
+            self.idx_to_class.update({idx: truths_df.ClassName[truths_df.Class == idx].iloc[0]})
 
     # TODO Ensure that predictions from loaded model are constant
     def evaluate_model(self, model):
@@ -119,6 +125,56 @@ class Evaluator:
         self.metrics_results = {'loss': total_loss / n_samples}
         self.metrics_results.update(metrics)
 
+    # def evaluate_csv(self, predictions_csv, ground_truths_csv):
+    #     self.metrics_results = {}
+    #
+    #     metrics = {}
+    #     preds_df = pd.read_csv(predictions_csv, index_col=0)
+    #     truths_df = pd.read_csv(ground_truths_csv, index_col=0)
+    #
+    #     if self.model_pred_idx_to_dataset_idx is not None:
+    #         keys_to_del = []
+    #         for k in self.idx_to_class.keys():
+    #             if k not in self.model_pred_idx_to_dataset_idx.keys():
+    #                 keys_to_del.append(k)
+    #         for k in keys_to_del:
+    #             del self.idx_to_class[k]
+    #
+    #     outputs = preds_df.iloc[:, 1: len(self.idx_to_class.values())].values
+    #     try:
+    #         targets = truths_df.Class.values
+    #     except AttributeError:
+    #         targets = truths_df.Facial_label.values
+    #
+    #     output = torch.Tensor(outputs)
+    #     target = torch.Tensor(targets)
+    #
+    #     if self.model_pred_idx_to_dataset_idx is not None:
+    #         output = output.cpu().numpy()
+    #         target = target.cpu().numpy()
+    #
+    #         output = np.argmax(output, axis=1)
+    #         dataset_output = []
+    #         updated_targets = []
+    #         for i in range(len(output)):
+    #             if output[i] in self.model_pred_idx_to_dataset_idx.keys():
+    #                 dataset_output.append(self.model_pred_idx_to_dataset_idx[output[i]])
+    #                 updated_targets.append(target[i])
+    #         output = torch.tensor(np.eye(len(self.idx_to_class))[dataset_output])
+    #         target = torch.tensor(updated_targets)
+    #
+    #     for met in self.metric_ftns:
+    #         curr_metric_out = met(output, target)
+    #         try:
+    #             iter(curr_metric_out)
+    #             curr_metric_out = {self.idx_to_class[i]: curr_metric_out[i] for i in range(len(self.idx_to_class))}
+    #         except TypeError:
+    #             pass
+    #         curr_metric_out = {met.__name__: curr_metric_out}
+    #         metrics.update(curr_metric_out)
+    #
+    #     self.metrics_results.update(metrics)
+
     def evaluate_csv(self, predictions_csv, ground_truths_csv):
         self.metrics_results = {}
 
@@ -126,42 +182,23 @@ class Evaluator:
         preds_df = pd.read_csv(predictions_csv, index_col=0)
         truths_df = pd.read_csv(ground_truths_csv, index_col=0)
 
-        if self.model_pred_idx_to_dataset_idx is not None:
-            keys_to_del = []
-            for k in self.idx_to_class.keys():
-                if k not in self.model_pred_idx_to_dataset_idx.keys():
-                    keys_to_del.append(k)
-            for k in keys_to_del:
-                del self.idx_to_class[k]
+        outputs = preds_df.Class.values
 
-        outputs = preds_df.iloc[:, 1: len(self.idx_to_class.values())].values
         try:
             targets = truths_df.Class.values
         except AttributeError:
             targets = truths_df.Facial_label.values
 
+        self._set_idx_to_labels(truths_df)
+
         output = torch.Tensor(outputs)
         target = torch.Tensor(targets)
-
-        if self.model_pred_idx_to_dataset_idx is not None:
-            output = output.cpu().numpy()
-            target = target.cpu().numpy()
-
-            output = np.argmax(output, axis=1)
-            dataset_output = []
-            updated_targets = []
-            for i in range(len(output)):
-                if output[i] in self.model_pred_idx_to_dataset_idx.keys():
-                    dataset_output.append(self.model_pred_idx_to_dataset_idx[output[i]])
-                    updated_targets.append(target[i])
-            output = torch.tensor(np.eye(len(self.idx_to_class))[dataset_output])
-            target = torch.tensor(updated_targets)
 
         for met in self.metric_ftns:
             curr_metric_out = met(output, target)
             try:
                 iter(curr_metric_out)
-                curr_metric_out = {self.idx_to_class[i]: curr_metric_out[i] for i in range(len(self.idx_to_class))}
+                curr_metric_out = {self.idx_to_class[i]: curr_metric_out[i] for i in self.idx_to_class}
             except TypeError:
                 pass
             curr_metric_out = {met.__name__: curr_metric_out}
