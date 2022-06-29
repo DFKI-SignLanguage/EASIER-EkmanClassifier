@@ -5,7 +5,12 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score, confu
 
 def accuracy(output, target):
     with torch.no_grad():
-        pred = torch.argmax(output, dim=1)
+        try:
+            type(output)
+            pred = torch.argmax(output, dim=1)
+        except IndexError:
+            pred = output
+
         assert pred.shape[0] == len(target)
         correct = 0
         correct += torch.sum(pred == target).item()
@@ -16,7 +21,13 @@ def balanced_accuracy(output, target):
     with torch.no_grad():
         output = output.cpu().numpy()
         target = target.cpu().numpy()
-        pred = np.argmax(output, axis=1)
+
+        try:
+            type(output)
+            pred = np.argmax(output, axis=1)
+        except IndexError:
+            pred = output
+
         ba_score = balanced_accuracy_score(y_true=target, y_pred=pred)
     return ba_score
 
@@ -36,7 +47,11 @@ def sensitivity_per_class(output, target):
         output = output.cpu().numpy()
         target = target.cpu().numpy()
 
-        pred = np.argmax(output, axis=1)
+        try:
+            type(output)
+            pred = np.argmax(output, axis=1)
+        except IndexError:
+            pred = output
         cm = confusion_matrix(target, pred)
 
         FN = cm.sum(axis=1) - np.diag(cm)
@@ -52,7 +67,11 @@ def specificity_per_class(output, target):
         output = output.cpu().numpy()
         target = target.cpu().numpy()
 
-        pred = np.argmax(output, axis=1)
+        try:
+            type(output)
+            pred = np.argmax(output, axis=1)
+        except IndexError:
+            pred = output
         cm = confusion_matrix(target, pred)
 
         FP = cm.sum(axis=0) - np.diag(cm)
@@ -70,7 +89,11 @@ def accuracy_per_class(output, target):
         output = output.cpu().numpy()
         target = target.cpu().numpy()
 
-        pred = np.argmax(output, axis=1)
+        try:
+            type(output)
+            pred = np.argmax(output, axis=1)
+        except IndexError:
+            pred = output
         cm = confusion_matrix(target, pred)
 
         FP = cm.sum(axis=0) - np.diag(cm)
