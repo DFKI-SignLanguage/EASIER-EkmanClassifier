@@ -48,7 +48,8 @@ def main(config):
     model = model.to(device)
     model.eval()
 
-    evaluator = Evaluator(config, data_loader, device)
+    evaluator = Evaluator(data_loader, device)
+    evaluator.set_config(config)
     evaluator.idx_to_class = getattr(module_data, config["test_predictor"]['ground_truths_data_loader']['type']).get_label_map()
     evaluator.load_val_eval_df()
 

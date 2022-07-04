@@ -62,7 +62,8 @@ def main(config):
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 
     # set up evaluator that can save train, val and test evaluation results
-    evaluator = Evaluator(config, data_loader, device)
+    evaluator = Evaluator(data_loader, device)
+    evaluator.set_config(config)
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
