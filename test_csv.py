@@ -1,16 +1,8 @@
-import collections
 import argparse
-import torch
-import data_loader.data_loaders as module_data
-import model.loss as module_loss
-import model.metric as module_metric
-import model.model as module_arch
 from parse_config import ConfigParser
 from timeit import default_timer as timer
 from evaluator.evaluator import Evaluator
 import datetime
-from data_loader.data_loaders import PredictionDataset
-from torch.utils.data import DataLoader
 
 # TODO Find solution for PosixPath and WindowsPath
 # when model is trained on Linux, it expects a PosixPath to load on Windows as well and vice versa
