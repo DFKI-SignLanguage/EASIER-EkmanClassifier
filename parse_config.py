@@ -75,28 +75,43 @@ class ConfigParser:
         if hasattr(args, "device") and args.device is not None:
             os.environ["CUDA_VISIBLE_DEVICES"] = args.device
 
+        #
+        # Load the configuration
+        #
         cfg_fname = None
         if hasattr(args, "resume") and args.resume is not None:
             resume = Path(args.resume)
-            cfg_fname = resume.parent / 'config.json'
+            cfg_fname = resume.parent / CONFIG_FILE
         elif hasattr(args, "modeldir") and args.modeldir is not None:
             # Filenames for self-contained trained model
             model_dir_path = Path(args.modeldir)
             resume = model_dir_path / MODEL_BIN
             cfg_fname = model_dir_path / CONFIG_FILE
         else:
-            msg_no_cfg = "Configuration file need to be specified. Add '-c config.json', for example."
-            assert args.config is not None, msg_no_cfg
             resume = None
-            cfg_fname = Path(args.config)
+
+        # else:
+        #     msg_no_cfg = "Configuration file need to be specified. Add '-c config.json', for example."
+        #     assert args.config is not None, msg_no_cfg
+        #     resume = None
+        #     cfg_fname = Path(args.config)
+
+        config = dict()  # Default: empty config
 
         # Load the "default" config
-        config = read_json(cfg_fname)
+        if cfg_fname is not None:
+            config = read_json(cfg_fname)
 
         # If specified, merge the config with the one specified in the command line
-        if hasattr(args, "config") and resume:
-            # update new config for fine-tuning
-            config.update(read_json(args.config))
+        if hasattr(args, "config"):  # and resume:
+            extra_cfg_fname = args.config
+            if extra_cfg_fname is not None:
+                # update new config for fine-tuning
+                config.update(read_json(extra_cfg_fname))
+
+        # If the config is still empty
+        #if len(config) == 0:
+        #    raise Exception("Configuration file not found. Add '-c config.json', for example.")
 
         if hasattr(args, "predict"):
             predictor = {
