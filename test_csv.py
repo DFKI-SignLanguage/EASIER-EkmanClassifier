@@ -22,8 +22,8 @@ def main(config):
     prediction_time = datetime.timedelta(seconds=(end - start))
 
     evaluator.pred_time = prediction_time
-
-    evaluator.save(save_path=config["out_path"], type_eval="test")
+    evaluator.load_validation_eval_df(save_path=config["out_path"])
+    evaluator.save(type_eval="test")
 
 
 if __name__ == '__main__':

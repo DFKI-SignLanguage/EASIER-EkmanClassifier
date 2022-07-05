@@ -51,7 +51,7 @@ def main(config):
     evaluator = Evaluator(data_loader, device)
     evaluator.set_config(config)
     evaluator.idx_to_class = getattr(module_data, config["test_predictor"]['ground_truths_data_loader']['type']).get_label_map()
-    evaluator.load_val_eval_df()
+    evaluator.load_validation_eval_df()
 
     model_preds_idx_to_class = getattr(module_data, config["test_predictor"]['model_preds_data_loader']['type']).get_label_map()
     evaluator.convert_idx_to_dataset(model_preds_idx_to_class)

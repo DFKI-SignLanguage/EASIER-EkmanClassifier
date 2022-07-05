@@ -173,9 +173,10 @@ class Evaluator:
 
         self.metrics_results.update(metrics)
 
-    def load_val_eval_df(self):
+    def load_validation_eval_df(self, save_path=None):
 
         if (hasattr(self.config, "resume") and self.config.resume is not None):
+            # TODO: update save dir for new model and info saving path chosen in config parser
             checkpoint_model_path = self.config.resume
             split = os.path.split
             timestamp = split(split(checkpoint_model_path)[0])[1]
@@ -185,29 +186,20 @@ class Evaluator:
 
             self.config.run_id = timestamp
             self.timestamp = timestamp
-        elif ("csv_predictor" in self.config.config.keys()):
-            timestamp = self.config["csv_predictor"]["model_preds"].split("/")[-1].split(".csv")[0]
-            updated_save_dir = Path((os.path.split(self._save_dir)[0])) / timestamp
-            self.config._save_eval_dir = updated_save_dir
-            self._save_dir = updated_save_dir
-
-            self.config.run_id = timestamp
-            self.timestamp = timestamp
+        elif save_path:
+            directory, file = os.path.split(save_path)
+            self._save_dir = directory
+            if file is not None:
+                self.eval_csv_file = file
 
         try:
-            self.eval_df = pd.read_csv(self._save_dir / "eval.csv")
+            self.eval_df = pd.read_csv(os.path.join(self._save_dir, self.eval_csv_file))
         except FileNotFoundError:
             if not os.path.exists(self._save_dir):
                 os.makedirs(self._save_dir)
             self.eval_df = pd.DataFrame(columns=self.eval_columns)
 
-    def save(self, type_eval, save_path=None):
-
-        if save_path:
-            directory, file = os.path.split(save_path)
-            self._save_dir = directory
-            if file is not None:
-                self.eval_csv_file = file
+    def save(self, type_eval):
 
         if type_eval == "validation":
             new_row_dict = {
@@ -244,6 +236,4 @@ class Evaluator:
         else:
             raise ValueError
 
-        if not os.path.exists(self._save_dir):
-            os.makedirs(self._save_dir)
         self.eval_df.to_csv(os.path.join(self._save_dir, self.eval_csv_file))
