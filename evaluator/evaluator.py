@@ -195,7 +195,7 @@ class Evaluator:
         try:
             self.eval_df = pd.read_csv(os.path.join(self._save_dir, self.eval_csv_file))
         except FileNotFoundError:
-            if not os.path.exists(self._save_dir):
+            if self._save_dir != "" and not os.path.exists(self._save_dir):
                 os.makedirs(self._save_dir)
             self.eval_df = pd.DataFrame(columns=self.eval_columns)
 
