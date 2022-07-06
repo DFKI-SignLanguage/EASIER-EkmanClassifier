@@ -13,15 +13,15 @@ from pathlib import Path
 
 # Classes expected to be in the first round of annotation on the EASIER project.
 EASIER_CLASSES = [
-    "Happiness",
-    "Sadness",
-    "Surprise",
-    "Fear",
-    "Anger",
-    "Disgust",
-    "Contempt",
-    "Other",
-    "Neutral"  # This class is not explicitly annotated, but rather the default in case of no annotation.
+    "Happiness",  # 0
+    "Sadness",    # 1
+    "Surprise",   # 2
+    "Fear",       # 3
+    "Anger",      # 4
+    "Disgust",    # 5
+    "Contempt",   # 6
+    "Other",      # 7
+    "Neutral"     # 8
 ]
 EASIER_CLASSES_DICT = {i: c for i, c in enumerate(EASIER_CLASSES)}
 

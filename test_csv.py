@@ -1,5 +1,4 @@
 import argparse
-from parse_config import ConfigParser
 from timeit import default_timer as timer
 from evaluator.evaluator import Evaluator
 import datetime
