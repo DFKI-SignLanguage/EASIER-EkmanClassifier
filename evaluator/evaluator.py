@@ -165,7 +165,7 @@ class Evaluator:
             curr_metric_out = met(output, target)
             try:
                 iter(curr_metric_out)
-                curr_metric_out = {self.idx_to_class[i]: curr_metric_out[i] for i in self.idx_to_class}
+                curr_metric_out = {self.idx_to_class[clsID]: curr_metric_out[idx] for idx, clsID in enumerate(self.idx_to_class)}
             except TypeError:
                 pass
             curr_metric_out = {met.__name__: curr_metric_out}
