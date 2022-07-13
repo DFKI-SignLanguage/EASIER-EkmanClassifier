@@ -19,7 +19,7 @@ class Evaluator:
                              "Validation Accuracy", "Validation Balanced Accuracy",
                              "Test set split", "Test Accuracy", "Test Balanced Accuracy",
                              ] + \
-                            ["se " + className for className in EASIER_CLASSES] \
+                            EASIER_CLASSES \
                             + ["Total Training time", "Validation Prediction Time", "Test Prediction Time",
                                "TensorBoard"]
         self.eval_df = pd.DataFrame(columns=self.eval_columns)
@@ -224,7 +224,7 @@ class Evaluator:
                 "Test Accuracy": self.metrics_results["accuracy"],
                 "Test Balanced Accuracy": self.metrics_results["balanced_accuracy"]
             }
-            se_dict = {"se " + k: self.metrics_results["sensitivity_per_class"][k] for k in self.idx_to_class.values()}
+            se_dict = {k: self.metrics_results["sensitivity_per_class"][k] for k in self.idx_to_class.values()}
 
             row_dict.update(se_dict)
 
@@ -236,4 +236,4 @@ class Evaluator:
         else:
             raise ValueError
 
-        self.eval_df.to_csv(os.path.join(self._save_dir, self.eval_csv_file))
+        self.eval_df.to_csv(os.path.join(self._save_dir, self.eval_csv_file), index=False)

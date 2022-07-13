@@ -64,7 +64,7 @@ $(PREDICTIONS): $(NORMALIZED_IMAGES) $(MODEL) $(CONFIG) | $(OUT_DIR)
 	python ../predict.py -p -m "$(MODELDIR)" -i "$<" -o "$@"
 
 $(PREDICTIONS_NORMALIZED): $(PREDICTIONS) $(MODEL_LABEL_NORMALIZATION_MAP) | $(OUT_DIR)
-		PYTHONPATH=.. python ../Scripts/NormalizeLabels.py -i "$<" -m "$(MODEL_LABEL_NORMALIZATION_MAP)" -o "$@"
+	PYTHONPATH=.. python ../Scripts/NormalizeLabels.py -i "$<" -m "$(MODEL_LABEL_NORMALIZATION_MAP)" -o "$@"
 
 $(OUT_DIR):
 	@echo "Creating dir '$@'"
@@ -78,3 +78,12 @@ video: $(VIDEO_FILE)
 
 $(VIDEO_FILE): $(PREDICTIONS) $(NORMALIZED_IMAGES)
 	python ../Scripts/ComposeLabeledVideo.py -p $< --dir $(NORMALIZED_IMAGES) -o $@
+
+
+#
+# Test
+TEST_RESULTS=$(OUT_DIR)/test_results.csv
+test: $(TEST_RESULTS)
+
+$(TEST_RESULTS): $(PREDICTIONS_NORMALIZED) $(NORMALIZED_LABELS)
+	python ../test_csv.py -p $(PREDICTIONS_NORMALIZED) -t $(NORMALIZED_LABELS) -o $@
