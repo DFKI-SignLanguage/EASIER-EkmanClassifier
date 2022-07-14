@@ -149,6 +149,9 @@ class Evaluator:
         preds_df = pd.read_csv(predictions_csv, index_col=0)
         truths_df = pd.read_csv(ground_truths_csv, index_col=0)
 
+        preds_df.sort_index(inplace=True)
+        truths_df.sort_index(inplace=True)
+
         outputs = preds_df.Class.values
 
         try:
