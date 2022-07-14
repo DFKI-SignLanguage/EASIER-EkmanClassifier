@@ -152,6 +152,11 @@ class Evaluator:
         preds_df.sort_index(inplace=True)
         truths_df.sort_index(inplace=True)
 
+        # Be sure that the two indices (image names) are exactly the same
+        diff = preds_df.index != truths_df.index
+        if diff.any():
+            raise Exception("Image names differ between ground truth and prediction files!")
+
         outputs = preds_df.Class.values
 
         try:
