@@ -13,15 +13,15 @@ from pathlib import Path
 
 # Classes expected to be in the first round of annotation on the EASIER project.
 EASIER_CLASSES = [
-    "Happiness",
-    "Sadness",
-    "Surprise",
-    "Fear",
-    "Anger",
-    "Disgust",
-    "Contempt",
-    "Other",
-    "Neutral"  # This class is not explicitly annotated, but rather the default in case of no annotation.
+    "Happiness",  # 0
+    "Sadness",    # 1
+    "Surprise",   # 2
+    "Fear",       # 3
+    "Anger",      # 4
+    "Disgust",    # 5
+    "Contempt",   # 6
+    "Other",      # 7
+    "Neutral"     # 8
 ]
 EASIER_CLASSES_DICT = {i: c for i, c in enumerate(EASIER_CLASSES)}
 
@@ -55,9 +55,9 @@ class FaceExpressionPhoenixDataset(Dataset):
 
     def __init__(self, data_path, training=True, transform=None, target_transform=None):
 
-        # https://www.researchgate.net/publication/340049545_Facial_Expression_Phoenix_FePh_An_Annotated_Sequenced_Dataset_for_Facial_and_Emotion-Specified_Expressions_in_Sign_Language
         self.data_path = data_path
         self.images_dir_path = os.path.join(data_path, 'FePh_images')
+        # self.images_dir_path = os.path.join(data_path, 'FePh_images-cropped')
 
         if training:
             self.labels_csv_path = os.path.join(data_path, 'FePh_train.csv')
@@ -69,7 +69,7 @@ class FaceExpressionPhoenixDataset(Dataset):
         self.target_transform = target_transform
 
         y_df = pd.read_csv(self.labels_csv_path, dtype=str)
-        y_df = y_df.head(350)
+        # y_df = y_df.head(350)
         # Removing all data points with 'Face_not_visible' i.e no labels
         y_df.dropna(inplace=True)
         # Extracting multiple labels
@@ -242,13 +242,22 @@ class AffectNet(Dataset):
         # check if labels cache exists
         if not os.path.exists(cache_file):
             labels = []
+            # for im in self.images[:100]:
             for im in self.images:
                 base = Path(im).stem
                 exp = np.load(os.path.join(self.data_path, 'annotations', base + "_exp.npy"))
                 labels.append(int(exp))
-            np.save(cache_file, labels)
+            try:
+                np.save(cache_file, labels)
+            except OSError:
+                print("Cannot save affectnet labels cache file.")
 
-        self.labels = np.load(cache_file)
+        try:
+            self.labels = np.load(cache_file)
+
+        except FileNotFoundError:
+            self.labels = np.array(labels)
+
         self.num_classes = 8
 
     def get_sampler_weights(self):
@@ -295,12 +304,14 @@ class AffectNetDataLoader(DataLoader):
         trsfm = transforms.Compose([
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            transforms.Resize((224, 224)),
         ])
 
         val_trsfm = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            transforms.Resize((224, 224)),
         ])
 
         if training:
@@ -349,3 +360,75 @@ class AffectNetDataLoader(DataLoader):
     @staticmethod
     def get_label_map():
         return AffectNet.idx_to_class
+        # return {0: 'anger', 1: 'disgust', 2: 'fear', 3: 'happy', 4: 'neutral', 5: 'sad', 6: 'surprise'}
+
+
+class AsavchenkoB07DataLoader(DataLoader):
+    """
+    AffectNet data loading demo using DataLoader
+    validation_split does nothing. included for compatibility with other loaders
+    """
+
+    def __init__(self, data_dir, batch_size, training=True, shuffle=True, num_workers=1, validation_split=0.0):
+
+        self.validation_split = 0
+        self.training = training
+
+        trsfm = transforms.Compose([
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+
+        val_trsfm = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+
+        if training:
+
+            self.dataset = AffectNet(os.path.join(data_dir, "train_set"), transform=trsfm)
+            self.val_dataset = AffectNet(os.path.join(data_dir, "val_set"), transform=val_trsfm)
+            weights = self.dataset.get_sampler_weights()
+            train_sampler = torch.utils.data.sampler.WeightedRandomSampler(weights=torch.DoubleTensor(weights),
+                                                                           num_samples=len(self.dataset))
+            shuffle = False
+        else:
+            trsfm = transforms.Compose([
+                transforms.ToTensor(),
+                # transforms.Resize((260, 260)),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            ])
+
+            self.dataset = AffectNet(os.path.join(data_dir, "val_set"), transform=val_trsfm)
+            train_sampler = None
+            shuffle = False
+
+        self.shuffle = shuffle
+
+        # self.val_data_dir = val_data_dir
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+
+        self.init_kwargs = {
+            'dataset': self.dataset,
+            'batch_size': self.batch_size,
+            'shuffle': shuffle,
+            'num_workers': self.num_workers,
+        }
+
+        super().__init__(sampler=train_sampler, **self.init_kwargs)
+
+    def split_validation(self):
+
+        init_kwargs = {
+            'batch_size': self.batch_size,
+            'shuffle': False,
+            'num_workers': self.num_workers,
+        }
+
+        return DataLoader(dataset=self.val_dataset, **init_kwargs)
+
+    @staticmethod
+    def get_label_map():
+        return {0: 'anger', 1: 'disgust', 2: 'fear', 3: 'happy', 4: 'neutral', 5: 'sad', 6: 'surprise'}

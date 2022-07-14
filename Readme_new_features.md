@@ -1,3 +1,29 @@
+# v3 Features
+- Updated test.py to be able to test models, trained on dataset A, on dataset B.
+  - The flags are as below:
+    - ```-g / --ground_truths_data_loader``` flag that indicates the data loader that contains the index to class map for the supplied ground truths.
+    - ```-r / --resume``` flag ==> path of the model to be used. Similar in function as the -r/--resume flag in train.py and test.py
+    - ```-d / --device``` indices of GPUs to enable (default: all).
+    - ```-m / --model_preds_data_loader``` flag that indicates the data loader that contains the index to class map for the dataset that the model was trained on.
+    - ```-c / --config``` flag ==> config.json used for training and testing 
+  - The above script was used in the following ways:
+    - ``` python test.py --config config-FePh.json -r saved/models/ResNet50-AffNet-nopreproc-210921/ResNet50_affectnet.pth -g FaceExpressionPhoenixDataLoader -m AffectNetDataLoader```
+    - ``` python test.py --config config-FePh.json -r saved/models/Resnet50/0904_200216/checkpoint-epoch30.pth -g FaceExpressionPhoenixDataLoader -m FaceExpressionPhoenixDataLoader```
+    - In order to test on Face extraction phoenix test set edited by MTCNN, the edited images are placed in a folder called "FePh_images-cropped" in the directory of the FePh dataset. As of now, switching between the MTCNN edited and normal test images is done manually in FaceExpressionPhoenixDataset class located in data_loader/data_loaders.py . 
+- Setup a script "test_csv.py" for comparing an input predictions csv with an associated ground truth csv.
+  - The flags are as below:
+    - ```-g / --ground_truths_data_loader``` flag that indicates the data loader that contains the index to class map for the supplied ground truths.
+    - ```-p / --model_preds``` path of csv file containing the model predictions. (This name will be used to store the eval results in saved/eval/experiment_name/model_csv_name/eval.csv)
+    - ```-t / --ground_truths``` flag ==> path and filename for the csv file containing the ground truths.
+    - ```-m / --model_preds_data_loader``` flag that indicates the data loader that contains the index to class map for the dataset that the model was trained on.
+    - ```-c / --config``` flag ==> config.json used for training and testing 
+  - The above script was used in the following ways:
+    - ``` python test_csv.py --config config-AffectNet.json -t reference_images-truth.csv -p pred_results/affectnet-1epoch/ekman_ref_cropped_affectnet_1ep.csv -g AffectNetDataLoader -m AffectNetDataLoader```
+
+- Known Issues:
+  - NOTE: Loading model and testing using test.py produces slightly different results each time.
+
+
 # v2 Features
 - Bugfixes 
   - ConfigParser: Prevent empty folder from being created when running test.py

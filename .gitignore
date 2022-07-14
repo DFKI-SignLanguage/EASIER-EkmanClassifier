@@ -101,10 +101,7 @@ ENV/
 .mypy_cache/
 
 # input data, saved log, checkpoints
-data/
-input/
 saved/
-datasets/
 
 # editor, os cache directory
 .vscode/
@@ -112,7 +109,8 @@ datasets/
 __MACOSX/
 .DS_Store
 
-config_temp.json
+train-configs
 
-*.csv
-/pred_results/
+
+
+
