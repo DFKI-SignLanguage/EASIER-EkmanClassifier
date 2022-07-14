@@ -18,6 +18,7 @@ NORMALIZED_LABELS=$(DATADIR)/labels-normalized.csv
 DATA_LABEL_NORMALIZATION_MAP=$(DATADIR)/labels-normalization-map.json
 # This directory will contain the images after pre-processing
 NORMALIZED_IMAGES=$(DATADIR)/images-normalized
+STATS_FILE=$(DATADIR)/stats.txt
 
 # Compose prediction name via model+datadir names
 MODEL_NAME = $(basename $(notdir $(MODELDIR)))
@@ -31,10 +32,18 @@ all:
 	@echo "Choose between:"
 	@echo "make normalize - from the images folder, generates an images-normalized folder"
 	@echo "make predict - generates a CSV file with predicitons for each normalized input image"
-	@echo "make test - TODO performs a comparison between the predictions and the ground truth labels (if present)"
+	@echo "make test - performs a comparison between the predictions and the ground truth labels (if present)"
 	@echo "make video - concatenate all the normalized images into a video with the predicted label in overlay"
+	@echo "make stats - computes some statistics about the dataset"
+	@echo ""
+	@echo "make everything - safe shortcut to make all"
+	@echo ""
+	@echo "DATADIR set to $(DATADIR)"
+	@echo "MODELDIR set to $(MODELDIR)"
 	@echo "Output will be written to dir $(OUT_DIR)"
 
+
+everything: normalize predict test video stats
 
 #
 # Normalizing
@@ -51,6 +60,13 @@ $(NORMALIZED_IMAGES): $(IMAGES)
 # Normalize the labels of the tested data
 $(NORMALIZED_LABELS): $(LABELS) $(DATA_LABEL_NORMALIZATION_MAP)
 	PYTHONPATH=.. python ../Scripts/NormalizeLabels.py -i "$<" -m "$(DATA_LABEL_NORMALIZATION_MAP)" -o "$@"
+
+#
+# Dataset statistics
+stats: $(STATS_FILE)
+
+$(STATS_FILE): $(NORMALIZED_LABELS)
+	PYTHONPATH=.. python ../Scripts/AnalyseDataset.py -l "$<" -o "$@"
 
 
 #
