@@ -28,7 +28,7 @@ OUT_DIR=$(MODEL_NAME)-$(DATA_NAME)
 MODEL_LABEL_NORMALIZATION_MAP=$(MODELDIR)/labels-normalization-map.json
 
 
-all:
+help:
 	@echo "Choose between:"
 	@echo "make normalize - from the images folder, generates an images-normalized folder"
 	@echo "make predict - generates a CSV file with predicitons for each normalized input image"
@@ -36,14 +36,14 @@ all:
 	@echo "make video - concatenate all the normalized images into a video with the predicted label in overlay"
 	@echo "make stats - computes some statistics about the dataset"
 	@echo ""
-	@echo "make everything - safe shortcut to make all"
+	@echo "make all - safe shortcut to make all"
 	@echo ""
 	@echo "DATADIR set to $(DATADIR)"
 	@echo "MODELDIR set to $(MODELDIR)"
 	@echo "Output will be written to dir $(OUT_DIR)"
 
 
-everything: normalize predict test video stats
+all: normalize predict test video stats
 
 #
 # Normalizing
@@ -74,10 +74,15 @@ $(STATS_FILE): $(NORMALIZED_LABELS)
 PREDICTIONS=$(OUT_DIR)/predictions.csv
 PREDICTIONS_NORMALIZED=$(OUT_DIR)/predictions-normalized.csv
 
+PREDICTION_SCRIPT=../predict.py
+ifdef MODEL_IS_SAVCHENKO
+PREDICTION_SCRIPT=../predict_savchenko_enet.py
+endif
+
 predict: $(PREDICTIONS) $(PREDICTIONS_NORMALIZED)
 
 $(PREDICTIONS): $(NORMALIZED_IMAGES) $(MODEL) $(CONFIG) | $(OUT_DIR)
-	python ../predict.py -p -m "$(MODELDIR)" -i "$<" -o "$@"
+	python $(PREDICTION_SCRIPT) -p -m "$(MODELDIR)" -i "$<" -o "$@"
 
 $(PREDICTIONS_NORMALIZED): $(PREDICTIONS) $(MODEL_LABEL_NORMALIZATION_MAP) | $(OUT_DIR)
 	PYTHONPATH=.. python ../Scripts/NormalizeLabels.py -i "$<" -m "$(MODEL_LABEL_NORMALIZATION_MAP)" -o "$@"
