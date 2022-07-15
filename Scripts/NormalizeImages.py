@@ -22,7 +22,8 @@ DEBUG_DRAW = False
 
 
 def normalize_images(in_dir: str, out_dir: str,
-                     tolerant: bool, square: bool, bbox_scale: Optional[float], rotate: bool) -> None:
+                     tolerant: bool, square: bool, bbox_scale: Optional[float],
+                     rotate: bool, rot_filter: int = PIL.Image.NEAREST) -> None:
     """Scans files in a directory.
     For each image ending in a recognized format, detect the position of a face, crop the image,
     and save the cropped result in the destination directory.
@@ -144,7 +145,7 @@ def normalize_images(in_dir: str, out_dir: str,
                 # theta=math.degrees(math.atan((right_eye_y-left_eye_y)/(right_eye_x-left_eye_x)))
                 theta = math.atan((eye_r[1] - eye_l[1]) / (eye_r[0] - eye_l[0]))
                 theta_degs = math.degrees(theta)
-                img_cropped = img_cropped.rotate(theta_degs)
+                img_cropped = img_cropped.rotate(angle=theta_degs, resample=rot_filter)
 
             # Beware! If the image crop area is outside of the visible area, PIL (at least Pillow==8.3.1)
             # adds an alpha channel and sets the out bounds to black color with 0 on the alpha channel.
@@ -219,6 +220,9 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--rotate', action='store_true', default=False, required=False,
                         help='If selected, the face, after being cropped, zoomed and squared, will be rotated '
                              ' so that the eyes are horizontally aligned.')
+    parser.add_argument('-bl', '--rot_filter_bilinear', action='store_true', default=False, required=False,
+                        help='If selected, the rotation filter will be a bi-linear sampling,'
+                             ' instead of the default nearest-neighbour.')
     parser.add_argument('-i', '--input', default=None, type=str, required=True,
                         help='path to a directory of images to analyse')
     parser.add_argument('-o', '--output', default=None, type=str, required=True,
@@ -233,10 +237,15 @@ if __name__ == '__main__':
     bbox_scale = args.bbox_scale
     rotate = args.rotate
 
+    if args.rot_filter_bilinear:
+        rot_filter = PIL.Image.BILINEAR
+    else:
+        rot_filter = PIL.Image.NEAREST
+
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
     normalize_images(in_dir=indir, out_dir=outdir,
-                     tolerant=tolerant, square=square, bbox_scale=bbox_scale, rotate=rotate)
+                     tolerant=tolerant, square=square, bbox_scale=bbox_scale, rotate=rotate, rot_filter=rot_filter)
 
     print("Done.")
