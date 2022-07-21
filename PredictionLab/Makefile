@@ -60,6 +60,14 @@ ifeq ($(IMG_PREPROC), CropRot)
 NORMALIZATION_PARAMS=--square --rotate
 endif
 
+ifeq ($(IMG_PREPROC), Crop11Rot)
+NORMALIZATION_PARAMS=--square --rotate --bbox-scale 1.1
+endif
+
+ifeq ($(IMG_PREPROC), Crop12Rot)
+NORMALIZATION_PARAMS=--square --rotate --bbox-scale 1.2
+endif
+
 ifeq ($(IMG_PREPROC), CropRotBL)
 NORMALIZATION_PARAMS=--square --rotate --rot_filter_bilinear
 endif
