@@ -72,6 +72,12 @@ ifeq ($(IMG_PREPROC), CropRotBL)
 NORMALIZATION_PARAMS=--square --rotate --rot_filter_bilinear
 endif
 
+ifeq ($(IMG_PREPROC), CNormCrop12Rot)
+NORMALIZATION_PARAMS=--normalize-color --square --rotate --bbox-scale 1.2
+endif
+
+
+
 # Normalize the images of the tested data
 $(NORMALIZED_IMAGES): $(IMAGES)
 	python ../Scripts/NormalizeImages.py \

@@ -21,8 +21,52 @@ IMAGE_FORMATS = set(('.png', '.PNG', '.jpg', '.JPG', '.jpeg', '.JPEG'))
 DEBUG_DRAW = False
 
 
+def normalize_image_color(img: Image, sd_multiplier: float = 2.5) -> np.ndarray:
+    """
+    Normalize the color channels, separately, for the given image.
+    Each color channel is centered on its mean and scaled of `sd_multiplier` times its standard deviation.
+    Note: works only with RGB images.
+
+    :param img: The input RGB image to normalize, shape (h,w,3)
+    :param sd_multiplier: This value is multiplied by the standard deviation to compute the scaling factor (128/
+    :return: A new RGB Image with separately normalized color channels.
+    """
+
+    bands = img.getbands()
+    assert len(bands) == 3
+
+    w, h = img.size
+
+    # Prepare an array for the output image
+    out_img_data = np.ndarray(shape=(h, w, 3), dtype='uint8')
+
+    for band_i in range(len(bands)):
+
+        img_band_data = np.asarray(img.getdata(band=band_i))
+        band_mean = np.mean(img_band_data)
+        band_std = np.std(img_band_data)
+
+        # Center to 0
+        centered = img_band_data - band_mean
+        # rescale according to std
+        # So that 2.5 times std goes to 128
+        scaled = centered * 128.0 / (sd_multiplier * band_std)
+        # recenter on [0,256]
+        normalized = scaled + band_mean
+
+        # Clip the color data in range [0,255]
+        # and write the color channel into the target array
+        out_img_data[:, :, band_i] = normalized.reshape(h, w).clip(0.0, 255.0)
+
+    out_img = PIL.Image.fromarray(obj=out_img_data, mode='RGB')
+
+    return out_img
+
+
 def normalize_images(in_dir: str, out_dir: str,
-                     tolerant: bool, square: bool, bbox_scale: Optional[float],
+                     tolerant: bool,
+                     normalize_color: bool,
+                     square: bool, bbox_scale: Optional[float],
                      rotate: bool, rot_filter: int = PIL.Image.NEAREST) -> None:
     """Scans files in a directory.
     For each image ending in a recognized format, detect the position of a face, crop the image,
@@ -32,6 +76,10 @@ def normalize_images(in_dir: str, out_dir: str,
     :param tolerant: If true, the iteration will continue on warnings, instead of stopping.
     :param out_dir: The output directory. Created if not existing.
     :param in_dir: Directory to scan. Will not be recursed.
+    :param bbox_scale: A float number scaling the edges of the cropping rectangle around its center.
+    Values <1 will shink the bbox, =1 has no effect, >1 will expand teh bbox.
+    :param rotate: Wether the image should be rotate to bring the eyes at the horizonal lavel.
+    :param rot_filter: The rotation interpolation filter. Values (int) taken from the PIL library.
     """
 
     detector = MTCNN(min_face_size=50)
@@ -62,7 +110,7 @@ def normalize_images(in_dir: str, out_dir: str,
             # Drop the alpha channel
             print("WARNING: Dropping alpha channel...")
             img_np = img_np[:, :, :3]
-            # PIL.Image.fromarray(img_np, 'RGB').save("after_alpha.png")
+            img = PIL.Image.fromarray(img_np, 'RGB')
         elif depth == 3:
             pass
         else:
@@ -130,6 +178,11 @@ def normalize_images(in_dir: str, out_dir: str,
 
             img_cropped = img.crop((x, y, x + width, y + height))
 
+            #
+            # Color normalization
+            if normalize_color:
+                img_cropped = normalize_image_color(img=img_cropped)
+
             # Bring eyes to cropped coordinates
             eye_r[0] -= x
             eye_l[0] -= x
@@ -140,6 +193,8 @@ def normalize_images(in_dir: str, out_dir: str,
                 draw = ImageDraw.Draw(img_cropped)
                 draw.point([(eye_r[0], eye_r[1]), (eye_l[0], eye_l[1])])
 
+            #
+            # Rotate to get the eyes at an horizontal level
             if rotate:
                 # From Savchenko...
                 # theta=math.degrees(math.atan((right_eye_y-left_eye_y)/(right_eye_x-left_eye_x)))
@@ -209,6 +264,9 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--tolerant', action='store_true', default=False, required=False,
                         help='If tolerant, do NOT stop each time there is a warning'
                              ' (e.g., more faces in a pic, no face in the pic, ...)')
+    parser.add_argument('-nc', '--normalize-color', action='store_true', default=False, required=False,
+                        help="If specified, the image color is normalized by centering and scaling the color histogram"
+                             "separately for each of the RGB color channels")
     parser.add_argument('-s', '--square', action='store_true', default=False, required=False,
                         help='If selected, the output cropped region will be forced to have 1:1 ratio'
                              ' by extending by the same amount of pixels in both directions'
@@ -233,6 +291,7 @@ if __name__ == '__main__':
     indir = args.input
     outdir = args.output
     tolerant = args.tolerant
+    norm_color = args.normalize_color
     square = args.square
     bbox_scale = args.bbox_scale
     rotate = args.rotate
@@ -246,6 +305,8 @@ if __name__ == '__main__':
         os.makedirs(outdir)
 
     normalize_images(in_dir=indir, out_dir=outdir,
-                     tolerant=tolerant, square=square, bbox_scale=bbox_scale, rotate=rotate, rot_filter=rot_filter)
+                     tolerant=tolerant,
+                     normalize_color=norm_color,
+                     square=square, bbox_scale=bbox_scale, rotate=rotate, rot_filter=rot_filter)
 
     print("Done.")
