@@ -149,6 +149,18 @@ class Evaluator:
         preds_df = pd.read_csv(predictions_csv, index_col=0)
         truths_df = pd.read_csv(ground_truths_csv, index_col=0)
 
+        preds_df.sort_index(inplace=True)
+        truths_df.sort_index(inplace=True)
+
+        # Be sure that the two indices (image names) are exactly the same
+        if len(preds_df) != len(truths_df):
+            raise Exception("Number of entries differ between ground truth and prediction files!")
+
+        diff = preds_df.index != truths_df.index
+        if diff.any():
+            print(preds_df[diff])
+            raise Exception("Image names differ between ground truth and prediction files!")
+
         outputs = preds_df.Class.values
 
         try:

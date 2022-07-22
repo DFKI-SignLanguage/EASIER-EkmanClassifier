@@ -61,11 +61,11 @@ for required_col in IMG_NAME_COL + LABEL_COLS:
 #
 # Check if the source dataset contains also predictions, or only the ClassName and Class columns
 if len(source_df.columns) > len(IMG_NAME_COL + LABEL_COLS):
-    print("Predictions detected: will rename/reorder also prediction columns")
+    print("Softmax predictions detected: will rename/reorder also prediction columns")
     output_columns = IMG_NAME_COL + EASIER_CLASSES + LABEL_COLS
     sort_predictions = True
 else:
-    print("No prediction columns found.")
+    print("No softmax prediction columns found.")
     output_columns = IMG_NAME_COL + LABEL_COLS
     sort_predictions = False
 
