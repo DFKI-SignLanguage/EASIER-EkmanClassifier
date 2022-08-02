@@ -31,7 +31,7 @@ STATS_FILE=$(DATADIR)/stats.txt
 MODEL_NAME = $(basename $(notdir $(MODELDIR)))
 DATA_NAME = $(notdir $(DATADIR))
 
-OUT_DIR=$(MODEL_NAME)-$(DATA_NAME)-$(IMG_PREPROC)
+OUT_DIR=results/$(MODEL_NAME)-$(DATA_NAME)-$(IMG_PREPROC)
 
 
 help:
@@ -70,6 +70,10 @@ endif
 
 ifeq ($(IMG_PREPROC), CropRotBL)
 NORMALIZATION_PARAMS=--square --rotate --rot_filter_bilinear
+endif
+
+ifeq ($(IMG_PREPROC), CNormCrop11Rot)
+NORMALIZATION_PARAMS=--normalize-color --square --rotate --bbox-scale 1.1
 endif
 
 ifeq ($(IMG_PREPROC), CNormCrop12Rot)

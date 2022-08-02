@@ -111,6 +111,5 @@ __MACOSX/
 
 train-configs
 
-
-
-
+# Ignore the directory containing the test results
+PredictionLab/results
