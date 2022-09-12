@@ -4,6 +4,9 @@ import pandas
 
 RESULTS_DIR = Path("results")
 
+print("Aggregating results for dir '{}'".format(RESULTS_DIR))
+
+
 out_df = pandas.DataFrame()
 
 for e in sorted(RESULTS_DIR.iterdir()):
@@ -26,5 +29,9 @@ for e in sorted(RESULTS_DIR.iterdir()):
 
     # print(results_file)
 
-out_df.to_csv("out.csv", header=True, index=False)
+aggregated_table = "aggregated_results.csv"
 
+print("Writing '{}'".format(aggregated_table))
+out_df.to_csv(aggregated_table, header=True, index=False)
+
+print("All done.")
