@@ -137,8 +137,14 @@ $(OUT_DIR):
 VIDEO_FILE=$(OUT_DIR)/composite_video.mp4
 video: $(VIDEO_FILE)
 
-$(VIDEO_FILE): $(PREDICTIONS) $(NORMALIZED_IMAGES)
-	python ../Scripts/ComposeLabeledVideo.py -p $< --dir $(NORMALIZED_IMAGES) -o $@
+ifneq ("$(wildcard $(NORMALIZED_LABELS))","")
+    VIDEO_EXTRA_OPT = -l $(NORMALIZED_LABELS)
+else
+    VIDEO_EXTRA_OPT =
+endif
+
+$(VIDEO_FILE): $(PREDICTIONS_NORMALIZED) $(NORMALIZED_IMAGES)
+	python ../Scripts/ComposeLabeledVideo.py -p $< --dir $(NORMALIZED_IMAGES) $(VIDEO_EXTRA_OPT) -o $@
 
 
 #
