@@ -31,7 +31,7 @@ STATS_FILE=$(DATADIR)/stats.txt
 MODEL_NAME = $(basename $(notdir $(MODELDIR)))
 DATA_NAME = $(notdir $(DATADIR))
 
-OUT_DIR=$(MODEL_NAME)-$(DATA_NAME)-$(IMG_PREPROC)
+OUT_DIR=results/$(MODEL_NAME)-$(DATA_NAME)-$(IMG_PREPROC)
 
 
 help:
@@ -70,6 +70,10 @@ endif
 
 ifeq ($(IMG_PREPROC), CropRotBL)
 NORMALIZATION_PARAMS=--square --rotate --rot_filter_bilinear
+endif
+
+ifeq ($(IMG_PREPROC), CNormCrop11Rot)
+NORMALIZATION_PARAMS=--normalize-color --square --rotate --bbox-scale 1.1
 endif
 
 ifeq ($(IMG_PREPROC), CNormCrop12Rot)
@@ -133,8 +137,14 @@ $(OUT_DIR):
 VIDEO_FILE=$(OUT_DIR)/composite_video.mp4
 video: $(VIDEO_FILE)
 
-$(VIDEO_FILE): $(PREDICTIONS) $(NORMALIZED_IMAGES)
-	python ../Scripts/ComposeLabeledVideo.py -p $< --dir $(NORMALIZED_IMAGES) -o $@
+ifneq ("$(wildcard $(NORMALIZED_LABELS))","")
+    VIDEO_EXTRA_OPT = -l $(NORMALIZED_LABELS)
+else
+    VIDEO_EXTRA_OPT =
+endif
+
+$(VIDEO_FILE): $(PREDICTIONS_NORMALIZED) $(NORMALIZED_IMAGES)
+	python ../Scripts/ComposeLabeledVideo.py -p $< --dir $(NORMALIZED_IMAGES) $(VIDEO_EXTRA_OPT) -o $@
 
 
 #

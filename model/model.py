@@ -86,3 +86,16 @@ class MobilenetModel(BaseModel):
     def forward(self, image):
         out = self.model(image)
         return out
+
+
+class EfficientNetModel(BaseModel):
+    def __init__(self, n_classes=8):
+        super(EfficientNetModel, self).__init__()
+
+        mobilenet_mod = models.efficientnet_b0(pretrained=True)
+        self.model = mobilenet_mod
+        self.model.classifier = nn.Linear(1280, n_classes)
+
+    def forward(self, image):
+        out = self.model(image)
+        return out
