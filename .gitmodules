@@ -1,0 +1,3 @@
+[submodule "VideoProcessingTools"]
+	path = VideoProcessingTools
+	url = https://github.com/DFKI-SignLanguage/VideoProcessingTools.git

@@ -37,21 +37,33 @@ TODO
 
 ## Automated Prediction and Testing
 
-The folder `PredictionLab` contains a `Makefile` implementing the full image normalization, prediciton, and testing pipeline.
-
 
 The directory `PredictionLab` contains a `MakeFile` for automating the process of normalizing images, predicting, and testing models across datasets.
 The goal is to flexibly test the prediction power of a model over many other datasets.
 
-The Makefile requires the presence of a couple of environment variables and the presence of ground truth labels and other info in a structured way.
+The Makefile requires the presence of three environment variables and the presence of ground truth labels and other info in a structured way.
 Example:
 
 ```
+export IMG_PREPROC=Crop11Rot
 export DATADIR=<path_to>/data/DaFEx
 export MODELDIR=<path_to>/models/ResNet50-AffNet-nopreproc-210921
 ```
 
-Where the DATADIR and the MODELDIR are structured like this:
+The `IMG_PREPROC` indicated which normalization technique must be applied to the images before being fed to the prediction model.
+Valid values are:
+
+* NoProc - no image processing. Image as it is
+* CropRot - face is cropped and then rotated so the eyes end on an horizontal line
+* Crop11Rot - after cropping, the face bbox is scaled by 1.1 on the borders, actually "zooming-out" from the image (face gets smaller, more surrounding details are revealed).
+* Crop12Rot - as before, but with 1.2 zooming factor
+* CropRotBL - Rotation is performed with a bilinear filter
+
+* CNormCrop11Rot - before cropping and rotating, a color normalization is performed, by centering RGB channels on the channels mean, and normalizing on 2.5 SD on the full channel dynamic range.
+* CNormCrop12Rot - same as before, with different zoom factor
+
+
+The DATADIR and the MODELDIR are structured like this:
 
 ```
 <DATADIR>/
@@ -101,6 +113,7 @@ Use the following to have an help file.
     make
 
 Normalized prediction labels are in this order:
+
 ```
 EASIER_CLASSES = [
     "Happiness",
