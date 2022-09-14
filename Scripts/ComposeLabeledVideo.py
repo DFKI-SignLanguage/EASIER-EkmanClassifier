@@ -10,10 +10,10 @@ VIDEO_OUT_SIZE = (224, 224)
 
 # Constants for video output
 TEXT_COLOR = (220, 10, 10)
-TEXT_POSITION = (10, 20)
+TEXT_POSITION = (10, 30)
 
 TRUTH_TEXT_COLOR = (10, 220, 10)
-TRUTH_TEXT_POSITION = (10, 40)
+TRUTH_TEXT_POSITION = (10, 60)
 
 
 def compose_video(predictions: str, frames_dir: str, out_video: str, labels: str = None) -> None:
@@ -45,13 +45,13 @@ def compose_video(predictions: str, frames_dir: str, out_video: str, labels: str
         frame = cv2.resize(src=img, dsize=VIDEO_OUT_SIZE, interpolation=cv2.INTER_AREA)
 
         cv2.putText(img=frame, text=prediction_label, org=TEXT_POSITION,
-                    fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5,
-                    color=TEXT_COLOR, thickness=3)
+                    fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1,
+                    color=TEXT_COLOR, thickness=2)
 
         if truth_label is not None:
             cv2.putText(img=frame, text=truth_label, org=TRUTH_TEXT_POSITION,
-                        fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5,
-                        color=TRUTH_TEXT_COLOR, thickness=3)
+                        fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1,
+                        color=TRUTH_TEXT_COLOR, thickness=2)
 
         # Write the resulting frame
         video_writer.write(frame)
