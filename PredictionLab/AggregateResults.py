@@ -23,13 +23,31 @@ for e in sorted(RESULTS_DIR.iterdir()):
 
     res_df = pandas.read_csv(results_file)
     assert len(res_df) == 1
-    res_df["Architecture"] = e.stem
 
+    # Rework columns
+    columns_to_drop = ["Timestamp", "Training set split", "Hyper-params", "Epochs", "Validation set split", "Validation Accuracy", "Validation Balanced Accuracy", "Test set split" ]
+    res_df = res_df.drop(labels=columns_to_drop, axis='columns')
+
+    result_file_splitted = e.stem.split('-')
+    img_preproc = result_file_splitted[-1]
+    testset = result_file_splitted[-2]
+    architecture = result_file_splitted[0]
+
+    res_df["Architecture"] = architecture
+
+    # Insert the columns just after the Architecture
+    res_df.insert(loc=1, column="Img Proc Test", value=img_preproc)
+    res_df.insert(1, "Test Set", testset)
+    res_df.insert(1, "Img Proc Training", "???")
+    res_df.insert(1, "Training Set", "???")
+    # Insert the directory at the beginning of everything
+    res_df.insert(0, "ModelDir", e.stem)
+
+    # Append to results
     out_df = out_df.append(res_df)
 
-    # print(results_file)
 
-aggregated_table = "aggregated_results.csv"
+aggregated_table = "aggregated_results-t.csv"
 
 print("Writing '{}'".format(aggregated_table))
 out_df.to_csv(aggregated_table, header=True, index=False)
