@@ -72,6 +72,10 @@ ifeq ($(IMG_PREPROC), CropRotBL)
 NORMALIZATION_PARAMS=--square --rotate --rot_filter_bilinear
 endif
 
+ifeq ($(IMG_PREPROC), CNormCropRot)
+NORMALIZATION_PARAMS=--normalize-color --square --rotate
+endif
+
 ifeq ($(IMG_PREPROC), CNormCrop11Rot)
 NORMALIZATION_PARAMS=--normalize-color --square --rotate --bbox-scale 1.1
 endif
