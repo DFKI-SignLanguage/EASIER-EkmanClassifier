@@ -96,7 +96,7 @@ $(NORMALIZED_IMAGES): $(IMAGES)
 	touch "$@"
 
 # Make sure the symbolic link to the original images is always there
-# Thsi has priority over the previous rule to generate normalized images
+# This has priority over the previous rule to generate normalized images
 $(IMAGES)-NoProc: $(IMAGES)
 	ln -s $< $@
 	touch "$@"

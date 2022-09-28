@@ -131,12 +131,12 @@ def scale_bbox(x: float, y: float, width: float, height: float, scale: float) ->
     """
     Scales a bounding box around its center
 
-    :param x:
-    :param y:
-    :param width:
-    :param height:
-    :param scale:
-    :return:
+    :param x: top-left x coordinate
+    :param y: top-up y coordinate
+    :param width: width of the box
+    :param height: height of the box
+    :param scale: scaling factor. < 1 shrinks, > 1 expands
+    :return: the scaled box parameters, in order: x, y, width, height
     """
 
     # Compute the bottom-right corner coords
@@ -160,8 +160,10 @@ def scale_bbox(x: float, y: float, width: float, height: float, scale: float) ->
 
     back_translation_matrix = np.linalg.inv(to_origin_matrix)
 
+    # compose the matrix that is scaling the box around its center
     t = back_translation_matrix @ scaling_matrix @ to_origin_matrix
 
+    # Transform the box coordinates
     nx, ny, o = t @ (x, y, 1)
     nx2, ny2, o2 = t @ (x2, y2, 1)
 
