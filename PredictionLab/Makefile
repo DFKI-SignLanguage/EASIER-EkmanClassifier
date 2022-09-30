@@ -36,8 +36,8 @@ OUT_DIR=results/$(MODEL_NAME)-$(DATA_NAME)-$(IMG_PREPROC)
 
 help:
 	@echo "Choose between:"
-	@echo "make normalize - from the images folder, generates an images-normalized folder"
-	@echo "make predict - generates a CSV file with predicitons for each normalized input image"
+	@echo "make normalize - from the images folder, generates an images-$(IMG_PREPROC) folder"
+	@echo "make predict - generates a CSV file with predictions for each normalized input image"
 	@echo "make test - performs a comparison between the predictions and the ground truth labels (if present)"
 	@echo "make video - concatenate all the normalized images into a video with the predicted label in overlay"
 	@echo "make stats - computes some statistics about the dataset"
