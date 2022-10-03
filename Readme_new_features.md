@@ -1,3 +1,15 @@
+# v4 Features
+- train.py takes config.json as input and produces 
+  - best model,
+  - config.json, 
+  - normalized_labels.json (create this json manually), 
+  - train log (including tensorboard) and 
+  - eval results on val set called eval.csv.
+- predict.py takes best model ==> pred.csv 
+- Scripts/NormalizeLabels.py takes pred.csv and normalized_labels.json and prodcues updated pred.csv with labels in the ground truth space.
+- test_csv.py takes updated pred.csv and ground_truth.csv and produces evaluation results in the same eval.csv or a new eval.csv
+
+
 # v3 Features
 - Updated test.py to be able to test models, trained on dataset A, on dataset B.
   - The flags are as below:
