@@ -38,6 +38,11 @@ class FaceExpressionPhoenixDataset(Dataset):
                     6: "surprise",
                     7: "none"}
 
+    dataset_stats = {
+        "mean": [0.6374226, 0.5848234, 0.56568706],
+        "std": [0.20125638, 0.22521368, 0.2639905]
+    }
+
     def __init__(self, data_path, training=True, transform=None, target_transform=None):
 
         self.data_path = data_path
@@ -116,6 +121,9 @@ class FaceExpressionPhoenixDataset(Dataset):
     def get_label_map(self):
         return self.idx_to_class
 
+    def get_dataset_stats(self):
+        return self.dataset_stats
+
 
 class FaceExpressionPhoenixDataLoader(BaseDataLoader):
     """
@@ -123,10 +131,12 @@ class FaceExpressionPhoenixDataLoader(BaseDataLoader):
     """
 
     def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, training=True):
+        mean = FaceExpressionPhoenixDataset.dataset_stats["mean"]
+        std = FaceExpressionPhoenixDataset.dataset_stats["std"]
         trsfm = transforms.Compose([
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.6374226, 0.5848234, 0.56568706], std=[0.20125638, 0.22521368, 0.2639905]),
+            transforms.Normalize(mean=mean, std=std),
             transforms.Resize((224, 224)),
         ])
         self.data_dir = data_dir
@@ -138,6 +148,10 @@ class FaceExpressionPhoenixDataLoader(BaseDataLoader):
     def get_label_map():
         return FaceExpressionPhoenixDataset.idx_to_class
 
+    @staticmethod
+    def get_dataset_stats():
+        return FaceExpressionPhoenixDataset.dataset_stats
+
 
 class PredictionDataset(Dataset):
     """
@@ -146,8 +160,9 @@ class PredictionDataset(Dataset):
     def __init__(self, data_path, data_loader):
         try:
             self.idx_to_class = data_loader.get_label_map()
+            self.dataset_stats = data_loader.get_dataset_stats()
         except AttributeError:
-            raise AttributeError("Implement a get_label_map() static method similar to FaceExtractionPhoenixDataset")
+            raise AttributeError("Implement a get_label_map() & get_dataset_stats() static methods similar to FaceExtractionPhoenixDataset")
 
         self.images_dir_path = os.path.join(data_path)
         self.image_inputs = [os.path.join(self.images_dir_path, img_name) for img_name in
@@ -158,9 +173,12 @@ class PredictionDataset(Dataset):
         in_image = Image.open(inp_img_name).convert('RGB')
 
         size = 224, 224  # Fixed to Resnet input size
+        mean = self.dataset_stats["mean"]
+        std = self.dataset_stats["std"]
 
         tensor_trsnfrm = transforms.Compose([
             transforms.ToTensor(),
+            transforms.Normalize(mean=mean, std=std),
             transforms.Resize(size),
         ])
         in_image = tensor_trsnfrm(in_image)
@@ -188,6 +206,11 @@ class AffectNet(Dataset):
                     5: "disgust",
                     6: "anger",
                     7: "contempt"}
+
+    dataset_stats = {
+        "mean": [0.485, 0.456, 0.406],
+        "std": [0.229, 0.224, 0.225]
+    }
 
     def __init__(self, data_path, transform=None):
         self.transform = transform
@@ -256,11 +279,14 @@ class AffectNetDataLoader(DataLoader):
 
         self.validation_split = 0
         self.training = training
+        mean = AffectNet.dataset_stats["mean"]
+        std = AffectNet.dataset_stats["std"]
 
         trsfm = transforms.Compose([
-            # transforms.RandomHorizontalFlip(),
+            transforms.RandomHorizontalFlip(),
+            # transforms.RandomHorizontalFlip(1.0),  #  Always flipping the image
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            transforms.Normalize(mean=mean, std=std),
             transforms.Resize((224, 224)),
         ])
 
@@ -316,6 +342,22 @@ class AffectNetDataLoader(DataLoader):
     def get_label_map():
         return AffectNet.idx_to_class
 
+    @staticmethod
+    def get_dataset_stats():
+        return AffectNet.dataset_stats
+
+# # TODO: WIP
+# class AsavchenkoB07DataLoader(DataLoader):
+#     """
+#     Same as the AffectNetDataLoader except that the label_map is different for the Asavhenko model.
+#     """
+#     @staticmethod
+#     def get_label_map():
+#         return {0: 'anger', 1: 'disgust', 2: 'fear', 3: 'happy', 4: 'neutral', 5: 'sad', 6: 'surprise'}
+#
+#     @staticmethod
+#     def get_dataset_stats():
+#         return AffectNet.dataset_stats
 
 
 class AsavchenkoB07DataLoader(DataLoader):
@@ -327,16 +369,18 @@ class AsavchenkoB07DataLoader(DataLoader):
 
         self.validation_split = 0
         self.training = training
+        mean = AffectNet.dataset_stats["mean"]
+        std = AffectNet.dataset_stats["std"]
 
         trsfm = transforms.Compose([
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            transforms.Normalize(mean=mean, std=std)
         ])
 
         val_trsfm = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            transforms.Normalize(mean=mean, std=std)
         ])
 
         if training:
@@ -350,7 +394,7 @@ class AsavchenkoB07DataLoader(DataLoader):
         else:
             trsfm = transforms.Compose([
                 transforms.ToTensor(),
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                transforms.Normalize(mean=mean, std=std)
             ])
 
             self.dataset = AffectNet(os.path.join(data_dir, "val_set"), transform=val_trsfm)
@@ -384,3 +428,7 @@ class AsavchenkoB07DataLoader(DataLoader):
     @staticmethod
     def get_label_map():
         return {0: 'anger', 1: 'disgust', 2: 'fear', 3: 'happy', 4: 'neutral', 5: 'sad', 6: 'surprise'}
+
+    @staticmethod
+    def get_dataset_stats():
+        return AffectNet.dataset_stats
