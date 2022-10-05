@@ -28,7 +28,7 @@ EASIER_CLASSES_DICT = {i: c for i, c in enumerate(EASIER_CLASSES)}
 
 class MnistDataLoader(BaseDataLoader):
     """
-    MNIST data loading demo using BaseDataLoader
+    Face Expression Phoenix Dataset from Alaghband et al https://arxiv.org/abs/2003.08759 .
     """
 
     def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, training=True):
@@ -141,7 +141,7 @@ class FaceExpressionPhoenixDataset(Dataset):
 
 class FaceExpressionPhoenixDataLoader(BaseDataLoader):
     """
-    MNIST data loading demo using BaseDataLoader
+    Face Expression Phoenix data loading using BaseDataLoader
     """
 
     def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, training=True):
@@ -163,6 +163,9 @@ class FaceExpressionPhoenixDataLoader(BaseDataLoader):
 
 
 class PredictionDataset(Dataset):
+    """
+    Wrapper class to obtain info relevant to datasets defined in this script like label_map()
+    """
     def __init__(self, data_path, data_loader):
         try:
             self.idx_to_class = data_loader.get_label_map()
@@ -223,6 +226,10 @@ class PredictionDataset(Dataset):
 # ---------------------- AffectNet Dataset & DataLoader ---------------------- #
 
 class AffectNet(Dataset):
+    """
+    AffectNet Dataset from Mollahosseini et al https://arxiv.org/pdf/1708.03985.pdf
+    """
+
     idx_to_class = {0: "neutral",
                     1: "happy",
                     2: "sad",
@@ -366,7 +373,7 @@ class AffectNetDataLoader(DataLoader):
 
 class AsavchenkoB07DataLoader(DataLoader):
     """
-    AffectNet data loading demo using DataLoader
+    Same as the AffectNetDataLoader except that the label_map is different for the Asavhenko model.
     validation_split does nothing. included for compatibility with other loaders
     """
 
