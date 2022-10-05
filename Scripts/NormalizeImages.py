@@ -297,9 +297,9 @@ if __name__ == '__main__':
     rotate = args.rotate
 
     if args.rot_filter_bilinear:
-        rot_filter = PIL.Image.BILINEAR
+        rot_filter = PIL.Image.Resampling.BILINEAR
     else:
-        rot_filter = PIL.Image.NEAREST
+        rot_filter = PIL.Image.Resampling.NEAREST
 
     if not os.path.exists(outdir):
         os.makedirs(outdir)
