@@ -97,9 +97,11 @@ $(NORMALIZED_IMAGES): $(IMAGES)
 
 # Make sure the symbolic link to the original images is always there
 # This has priority over the previous rule to generate normalized images
+# Creates the link only if it doesn't exist
 $(IMAGES)-NoProc: $(IMAGES)
-	ln -s $< $@
-	touch "$@"
+	test -f $@ && ln -s $< $@ || echo Link $@ already exists
+
+#	touch "$@"
 
 # Normalize the labels of the tested data
 $(NORMALIZED_LABELS): $(LABELS) $(DATA_LABEL_NORMALIZATION_MAP)
