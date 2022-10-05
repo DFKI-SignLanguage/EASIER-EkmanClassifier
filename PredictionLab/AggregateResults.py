@@ -47,7 +47,7 @@ for e in sorted(RESULTS_DIR.iterdir()):
     out_df = out_df.append(res_df)
 
 
-aggregated_table = "aggregated_results-t.csv"
+aggregated_table = "aggregated_results.csv"
 
 print("Writing '{}'".format(aggregated_table))
 out_df.to_csv(aggregated_table, header=True, index=False)
