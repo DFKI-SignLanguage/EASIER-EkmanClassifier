@@ -17,6 +17,8 @@ else
    /Users/fanu01-admin/Nextcloud/Documents/Projects/EASIER/EkmanClassifierSharedData/models/MNet_Afnet_CNormCropRot_20220919_050811 \
    /Users/fanu01-admin/Nextcloud/Documents/Projects/EASIER/EkmanClassifierSharedData/models/MNet_Afnet_CNormCrop11_20220914_155447 \
    /Users/fanu01-admin/Nextcloud/Documents/Projects/EASIER/EkmanClassifierSharedData/models/MNet_Afnet_CNormCrop12_20220804_190816 \
+   /Users/fanu01-admin/Nextcloud/Documents/Projects/EASIER/EkmanClassifierSharedData/models/MNet_Afnet_HFlip_CNormCrop11Rot_20221003 \
+   /Users/fanu01-admin/Nextcloud/Documents/Projects/EASIER/EkmanClassifierSharedData/models/MNet_Afnet_HFlip_CropRot_20221003 \
    "
 fi
 
@@ -35,7 +37,7 @@ do
     for data_dir in /Users/fanu01-admin/Nextcloud/Documents/Projects/EASIER/EkmanClassifierSharedData/data/EkmanReferences \
       /Users/fanu01-admin/Nextcloud/Documents/Projects/EASIER/EkmanClassifierSharedData/data/DaFEx \
       /Users/fanu01-admin/Nextcloud/Documents/Projects/EASIER/EkmanClassifierSharedData/data/FePh \
-      /Users/fanu01-admin/Nextcloud/Documents/Projects/EASIER/EkmanClassifierSharedData/data/AffectNet-Val
+      /Users/fanu01-admin/Nextcloud/Documents/Projects/EASIER/EkmanClassifierSharedData/data/AffectNetVal
     do
       echo 333 Data $data_dir
       ((make_count+=1))
