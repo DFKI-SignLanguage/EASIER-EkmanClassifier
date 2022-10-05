@@ -4,7 +4,6 @@ from base import BaseDataLoader
 import os
 from torch.utils.data import Dataset, DataLoader
 import pandas as pd
-# from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.utils import class_weight
 import numpy as np
 from PIL import Image
@@ -26,24 +25,10 @@ EASIER_CLASSES = [
 EASIER_CLASSES_DICT = {i: c for i, c in enumerate(EASIER_CLASSES)}
 
 
-class MnistDataLoader(BaseDataLoader):
+class FaceExpressionPhoenixDataset(Dataset):
     """
     Face Expression Phoenix Dataset from Alaghband et al https://arxiv.org/abs/2003.08759 .
     """
-
-    def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, training=True):
-        trsfm = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,))
-        ])
-        self.data_dir = data_dir
-        self.dataset = datasets.MNIST(self.data_dir, train=training, download=True, transform=trsfm)
-        super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
-
-
-class FaceExpressionPhoenixDataset(Dataset):
-    # TODO Report that self.classes and self.idx_to_class will be the standard way for storing label maps in all
-    #  custom datasets in this project
     idx_to_class = {0: "neutral",
                     1: "anger",
                     2: "disgust",
@@ -61,7 +46,6 @@ class FaceExpressionPhoenixDataset(Dataset):
 
         if training:
             self.labels_csv_path = os.path.join(data_path, 'FePh_train.csv')
-            # self.labels_csv_path = os.path.join(data_path, 'FePh_test.csv')
         else:
             self.labels_csv_path = os.path.join(data_path, 'FePh_test.csv')
 
@@ -69,7 +53,6 @@ class FaceExpressionPhoenixDataset(Dataset):
         self.target_transform = target_transform
 
         y_df = pd.read_csv(self.labels_csv_path, dtype=str)
-        # y_df = y_df.head(350)
         # Removing all data points with 'Face_not_visible' i.e no labels
         y_df.dropna(inplace=True)
         # Extracting multiple labels
@@ -84,7 +67,6 @@ class FaceExpressionPhoenixDataset(Dataset):
 
     def __len__(self):
         return len(self.image_inputs)
-        # return 50
 
     def __getitem__(self, idx):
 
@@ -105,8 +87,6 @@ class FaceExpressionPhoenixDataset(Dataset):
 
         if self.target_transform:
             out_label = self.target_transform(out_label)
-        # else:
-        #     out_label = torch.Tensor(out_label)
 
         return in_image, out_label
 
@@ -116,12 +96,10 @@ class FaceExpressionPhoenixDataset(Dataset):
 
     def get_sample_weights(self, idxs):
         print("Calculating sampler weights...")
-        # labels_array = np.argmax(self.labels[idxs], axis=1)
         labels_array = self.labels[idxs]
         class_weights = class_weight.compute_class_weight(class_weight='balanced', classes=np.unique(labels_array),
                                                           y=labels_array)
         num_classes = len(self.idx_to_class.keys())
-        # assert (class_weights.size == num_classes)
         if class_weights.size != num_classes:
             print(
                 "Warning: Not all classes in current set. (Temp solution: Adjust validation split till this message "
@@ -146,7 +124,6 @@ class FaceExpressionPhoenixDataLoader(BaseDataLoader):
 
     def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, training=True):
         trsfm = transforms.Compose([
-            # transforms.ToPILImage(),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.6374226, 0.5848234, 0.56568706], std=[0.20125638, 0.22521368, 0.2639905]),
@@ -191,33 +168,6 @@ class PredictionDataset(Dataset):
 
         return in_image, img_name
 
-    # getitem setup for loading pretrained model from asavchenko
-    # git repo https://github.com/HSE-asavchenko/face-emotion-recognition
-    # def __getitem__(self, idx):
-    #     inp_img_name = self.image_inputs[idx]
-    #     in_image = Image.open(inp_img_name).convert('RGB')
-    #
-    #     size = 224, 224  # Fixed to Resnet input size
-    #     # in_image.thumbnail(size, Image.ANTIALIAS)
-    #
-    #     # tensor_trsnfrm = transforms.ToTensor()
-    #     tensor_trsnfrm = transforms.Compose(
-    #         [
-    #             transforms.Resize(size),
-    #             # transforms.RandomHorizontalFlip(),
-    #             transforms.ToTensor(),
-    #             transforms.Normalize(mean=[0.485, 0.456, 0.406],
-    #                                  std=[0.229, 0.224, 0.225])
-    #         ]
-    #     )
-    #     in_image = tensor_trsnfrm(in_image)
-    #     in_image.unsqueeze_(0)
-    #
-    #     print(in_image.size())
-    #
-    #     img_name = os.path.split(inp_img_name)[1]
-    #     return in_image, img_name
-
     def __len__(self):
         return len(self.image_inputs)
         # return 50
@@ -249,7 +199,6 @@ class AffectNet(Dataset):
         # check if labels cache exists
         if not os.path.exists(cache_file):
             labels = []
-            # for im in self.images[:100]:
             for im in self.images:
                 base = Path(im).stem
                 exp = np.load(os.path.join(self.data_path, 'annotations', base + "_exp.npy"))
@@ -309,11 +258,10 @@ class AffectNetDataLoader(DataLoader):
         self.training = training
 
         trsfm = transforms.Compose([
-            transforms.RandomHorizontalFlip(),
+            # transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             transforms.Resize((224, 224)),
-            transforms.RandomHorizontalFlip(1.0)   # Always flips as probability is set to 1
         ])
 
         val_trsfm = transforms.Compose([
@@ -326,10 +274,10 @@ class AffectNetDataLoader(DataLoader):
 
             self.dataset = AffectNet(os.path.join(data_dir, "train_set"), transform=trsfm)
             self.val_dataset = AffectNet(os.path.join(data_dir, "val_set"), transform=val_trsfm)
-            weights = self.dataset.get_sampler_weights()
+            weights = self.dataset.get_sampsler_weights()
             train_sampler = torch.utils.data.sampler.WeightedRandomSampler(weights=torch.DoubleTensor(weights),
                                                                            num_samples=len(self.dataset))
-            shuffle = False
+            shuffle = shuffle
         else:
             trsfm = transforms.Compose([
                 transforms.ToTensor(),
@@ -342,7 +290,6 @@ class AffectNetDataLoader(DataLoader):
 
         self.shuffle = shuffle
 
-        # self.val_data_dir = val_data_dir
         self.batch_size = batch_size
         self.num_workers = num_workers
 
@@ -368,13 +315,12 @@ class AffectNetDataLoader(DataLoader):
     @staticmethod
     def get_label_map():
         return AffectNet.idx_to_class
-        # return {0: 'anger', 1: 'disgust', 2: 'fear', 3: 'happy', 4: 'neutral', 5: 'sad', 6: 'surprise'}
+
 
 
 class AsavchenkoB07DataLoader(DataLoader):
     """
     Same as the AffectNetDataLoader except that the label_map is different for the Asavhenko model.
-    validation_split does nothing. included for compatibility with other loaders
     """
 
     def __init__(self, data_dir, batch_size, training=True, shuffle=True, num_workers=1, validation_split=0.0):
@@ -400,11 +346,10 @@ class AsavchenkoB07DataLoader(DataLoader):
             weights = self.dataset.get_sampler_weights()
             train_sampler = torch.utils.data.sampler.WeightedRandomSampler(weights=torch.DoubleTensor(weights),
                                                                            num_samples=len(self.dataset))
-            shuffle = False
+            shuffle = shuffle
         else:
             trsfm = transforms.Compose([
                 transforms.ToTensor(),
-                # transforms.Resize((260, 260)),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ])
 
@@ -414,7 +359,6 @@ class AsavchenkoB07DataLoader(DataLoader):
 
         self.shuffle = shuffle
 
-        # self.val_data_dir = val_data_dir
         self.batch_size = batch_size
         self.num_workers = num_workers
 
