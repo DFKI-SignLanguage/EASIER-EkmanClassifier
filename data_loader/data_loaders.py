@@ -273,14 +273,16 @@ class AffectNetDataLoader(DataLoader):
     """
     AffectNet data loading demo using DataLoader
     validation_split does nothing. included for compatibility with other loaders
+    shuffle must always be false even while training as we use random sampler
     """
 
     def __init__(self, data_dir, batch_size, training=True, shuffle=True, num_workers=1, validation_split=0.0):
 
         self.validation_split = 0
         self.training = training
-        mean = AffectNet.dataset_stats["mean"]
-        std = AffectNet.dataset_stats["std"]
+        self.dataset_stats = self.get_dataset_stats()
+        mean = self.dataset_stats["mean"]
+        std = self.dataset_stats["std"]
 
         trsfm = transforms.Compose([
             transforms.RandomHorizontalFlip(),
@@ -292,7 +294,7 @@ class AffectNetDataLoader(DataLoader):
 
         val_trsfm = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            transforms.Normalize(mean=mean, std=std),
             transforms.Resize((224, 224)),
         ])
 
@@ -300,14 +302,14 @@ class AffectNetDataLoader(DataLoader):
 
             self.dataset = AffectNet(os.path.join(data_dir, "train_set"), transform=trsfm)
             self.val_dataset = AffectNet(os.path.join(data_dir, "val_set"), transform=val_trsfm)
-            weights = self.dataset.get_sampsler_weights()
+            weights = self.dataset.get_sampler_weights()
             train_sampler = torch.utils.data.sampler.WeightedRandomSampler(weights=torch.DoubleTensor(weights),
                                                                            num_samples=len(self.dataset))
-            shuffle = shuffle
+            shuffle = False  # Even though shuffle is false, RandomSampler will always shuffle
         else:
             trsfm = transforms.Compose([
                 transforms.ToTensor(),
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                transforms.Normalize(mean=mean, std=std)
             ])
 
             self.dataset = AffectNet(os.path.join(data_dir, "val_set"), transform=val_trsfm)
@@ -322,7 +324,7 @@ class AffectNetDataLoader(DataLoader):
         self.init_kwargs = {
             'dataset': self.dataset,
             'batch_size': self.batch_size,
-            'shuffle': shuffle,
+            'shuffle': self.shuffle,
             'num_workers': self.num_workers,
         }
 
