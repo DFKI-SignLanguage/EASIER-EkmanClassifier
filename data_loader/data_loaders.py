@@ -348,85 +348,11 @@ class AffectNetDataLoader(DataLoader):
     def get_dataset_stats():
         return AffectNet.dataset_stats
 
-# # TODO: WIP
-# class AsavchenkoB07DataLoader(DataLoader):
-#     """
-#     Same as the AffectNetDataLoader except that the label_map is different for the Asavhenko model.
-#     """
-#     @staticmethod
-#     def get_label_map():
-#         return {0: 'anger', 1: 'disgust', 2: 'fear', 3: 'happy', 4: 'neutral', 5: 'sad', 6: 'surprise'}
-#
-#     @staticmethod
-#     def get_dataset_stats():
-#         return AffectNet.dataset_stats
-
 
 class AsavchenkoB07DataLoader(DataLoader):
     """
     Same as the AffectNetDataLoader except that the label_map is different for the Asavhenko model.
     """
-
-    def __init__(self, data_dir, batch_size, training=True, shuffle=True, num_workers=1, validation_split=0.0):
-
-        self.validation_split = 0
-        self.training = training
-        mean = AffectNet.dataset_stats["mean"]
-        std = AffectNet.dataset_stats["std"]
-
-        trsfm = transforms.Compose([
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=mean, std=std)
-        ])
-
-        val_trsfm = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=mean, std=std)
-        ])
-
-        if training:
-
-            self.dataset = AffectNet(os.path.join(data_dir, "train_set"), transform=trsfm)
-            self.val_dataset = AffectNet(os.path.join(data_dir, "val_set"), transform=val_trsfm)
-            weights = self.dataset.get_sampler_weights()
-            train_sampler = torch.utils.data.sampler.WeightedRandomSampler(weights=torch.DoubleTensor(weights),
-                                                                           num_samples=len(self.dataset))
-            shuffle = shuffle
-        else:
-            trsfm = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize(mean=mean, std=std)
-            ])
-
-            self.dataset = AffectNet(os.path.join(data_dir, "val_set"), transform=val_trsfm)
-            train_sampler = None
-            shuffle = False
-
-        self.shuffle = shuffle
-
-        self.batch_size = batch_size
-        self.num_workers = num_workers
-
-        self.init_kwargs = {
-            'dataset': self.dataset,
-            'batch_size': self.batch_size,
-            'shuffle': shuffle,
-            'num_workers': self.num_workers,
-        }
-
-        super().__init__(sampler=train_sampler, **self.init_kwargs)
-
-    def split_validation(self):
-
-        init_kwargs = {
-            'batch_size': self.batch_size,
-            'shuffle': False,
-            'num_workers': self.num_workers,
-        }
-
-        return DataLoader(dataset=self.val_dataset, **init_kwargs)
-
     @staticmethod
     def get_label_map():
         return {0: 'anger', 1: 'disgust', 2: 'fear', 3: 'happy', 4: 'neutral', 5: 'sad', 6: 'surprise'}
