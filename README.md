@@ -67,14 +67,14 @@ The DATADIR and the MODELDIR are structured like this:
 
 ```
 <DATADIR>/
-    images/
-    labels.csv
-    labels-normalization-map.json
+    images/                        -- Directory containing all the images used for testing referenced in the labels.csv file
+    labels.csv                     -- A table with the name of the images used for testing and (optionally) their ground truth
+    labels-normalization-map.json  -- A table converting labels into the EASIER normalized order and names
 
 <MODELDIR>/
     model_best.pth                 -- The best model of your training session
     config.json                    -- The same config used for training
-    labels-normalization-map.json  -- This one coming from the dataset used for training
+    labels-normalization-map.json  -- Normally, the same defined for the dataset used for training
 ```
 
 and:
