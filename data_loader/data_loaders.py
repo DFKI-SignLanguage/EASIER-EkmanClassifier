@@ -10,6 +10,7 @@ import numpy as np
 from PIL import Image
 import glob
 from pathlib import Path
+import cv2
 
 # Classes expected to be in the first round of annotation on the EASIER project.
 EASIER_CLASSES = {
@@ -186,36 +187,43 @@ class PredictionDataset(Dataset):
 
         return in_image, img_name
 
-    # getitem setup for loading pretrained model from asavchenko
-    # git repo https://github.com/HSE-asavchenko/face-emotion-recognition
-    # def __getitem__(self, idx):
-    #     inp_img_name = self.image_inputs[idx]
-    #     in_image = Image.open(inp_img_name).convert('RGB')
-    #
-    #     size = 224, 224  # Fixed to Resnet input size
-    #     # in_image.thumbnail(size, Image.ANTIALIAS)
-    #
-    #     # tensor_trsnfrm = transforms.ToTensor()
-    #     tensor_trsnfrm = transforms.Compose(
-    #         [
-    #             transforms.Resize(size),
-    #             # transforms.RandomHorizontalFlip(),
-    #             transforms.ToTensor(),
-    #             transforms.Normalize(mean=[0.485, 0.456, 0.406],
-    #                                  std=[0.229, 0.224, 0.225])
-    #         ]
-    #     )
-    #     in_image = tensor_trsnfrm(in_image)
-    #     in_image.unsqueeze_(0)
-    #
-    #     print(in_image.size())
-    #
-    #     img_name = os.path.split(inp_img_name)[1]
-    #     return in_image, img_name
-
     def __len__(self):
         return len(self.image_inputs)
-        # return 50
+
+
+
+class VideoFrameDataset(Dataset):
+    def __init__(self, video_path, batch_size=32, transform=None):
+        self.video_path = video_path
+        self.batch_size = batch_size
+        self.transform = transform
+        self.cap = cv2.VideoCapture(video_path)
+        self.frame_count = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    def __len__(self):
+        return (self.frame_count + self.batch_size - 1) // self.batch_size
+
+    def __getitem__(self, idx):
+        start_frame = idx * self.batch_size
+        end_frame = min((idx + 1) * self.batch_size, self.frame_count)
+        size = 224, 224  # Fixed to Resnet input size
+        frames = []
+        for frame_num in range(start_frame, end_frame):
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
+            ret, frame = self.cap.read()
+            if not ret:
+                break
+
+
+            tensor_trsnfrm = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Resize(size),
+            ])
+
+            frame = tensor_trsnfrm(frame)
+            frames.append(torch.Tensor(frame))
+
+        return torch.stack(frames)
 
 
 # ---------------------- AffectNet Dataset & DataLoader ---------------------- #
@@ -348,7 +356,6 @@ class AffectNetDataLoader(DataLoader):
     def get_label_map():
         return AffectNet.idx_to_class
         # return {0: 'anger', 1: 'disgust', 2: 'fear', 3: 'happy', 4: 'neutral', 5: 'sad', 6: 'surprise'}
-
 
 
 class AsavchenkoB07DataLoader(DataLoader):

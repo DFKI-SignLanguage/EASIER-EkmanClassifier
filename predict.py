@@ -83,9 +83,13 @@ def main(config):
     })
 
     pred_df = pd.DataFrame(data=df_data)
-    pred_df.to_csv(config["predictor"]["out_dir"])
+    try:
+        pred_df.to_csv(config["predictor"]["out_dir"])
+    except KeyError:
+        print(pred_df)
     print(config.resume)
     print(pred_df.ClassName.value_counts())
+
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser(description='Generates the predictions for a given (already trained) model.'
