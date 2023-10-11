@@ -9,6 +9,7 @@ import numpy as np
 from PIL import Image
 import glob
 from pathlib import Path
+import cv2
 
 # Classes expected to be in the first round of annotation on the EASIER project.
 EASIER_CLASSES = [
@@ -188,7 +189,41 @@ class PredictionDataset(Dataset):
 
     def __len__(self):
         return len(self.image_inputs)
-        # return 50
+
+
+
+class VideoFrameDataset(Dataset):
+    def __init__(self, video_path, batch_size=32, transform=None):
+        self.video_path = video_path
+        self.batch_size = batch_size
+        self.transform = transform
+        self.cap = cv2.VideoCapture(video_path)
+        self.frame_count = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    def __len__(self):
+        return (self.frame_count + self.batch_size - 1) // self.batch_size
+
+    def __getitem__(self, idx):
+        start_frame = idx * self.batch_size
+        end_frame = min((idx + 1) * self.batch_size, self.frame_count)
+        size = 224, 224  # Fixed to Resnet input size
+        frames = []
+        for frame_num in range(start_frame, end_frame):
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
+            ret, frame = self.cap.read()
+            if not ret:
+                break
+
+
+            tensor_trsnfrm = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Resize(size),
+            ])
+
+            frame = tensor_trsnfrm(frame)
+            frames.append(torch.Tensor(frame))
+
+        return torch.stack(frames)
 
 
 # ---------------------- AffectNet Dataset & DataLoader ---------------------- #
@@ -347,7 +382,6 @@ class AffectNetDataLoader(DataLoader):
     @staticmethod
     def get_dataset_stats():
         return AffectNet.dataset_stats
-
 
 class AsavchenkoB07DataLoader(DataLoader):
     """
