@@ -14,14 +14,14 @@ import cv2
 # Classes expected to be in the first round of annotation on the EASIER project.
 EASIER_CLASSES = [
     "Happiness",  # 0
-    "Sadness",    # 1
-    "Surprise",   # 2
-    "Fear",       # 3
-    "Anger",      # 4
-    "Disgust",    # 5
-    "Contempt",   # 6
-    "Other",      # 7
-    "Neutral"     # 8
+    "Sadness",  # 1
+    "Surprise",  # 2
+    "Fear",  # 3
+    "Anger",  # 4
+    "Disgust",  # 5
+    "Contempt",  # 6
+    "Other",  # 7
+    "Neutral"  # 8
 ]
 EASIER_CLASSES_DICT = {i: c for i, c in enumerate(EASIER_CLASSES)}
 
@@ -158,12 +158,14 @@ class PredictionDataset(Dataset):
     """
     Wrapper class to obtain info relevant to datasets defined in this script like label_map()
     """
+
     def __init__(self, data_path, data_loader):
         try:
             self.idx_to_class = data_loader.get_label_map()
             self.dataset_stats = data_loader.get_dataset_stats()
         except AttributeError:
-            raise AttributeError("Implement a get_label_map() & get_dataset_stats() static methods similar to FaceExtractionPhoenixDataset")
+            raise AttributeError(
+                "Implement a get_label_map() & get_dataset_stats() static methods similar to FaceExtractionPhoenixDataset")
 
         self.images_dir_path = os.path.join(data_path)
         self.image_inputs = [os.path.join(self.images_dir_path, img_name) for img_name in
@@ -191,9 +193,24 @@ class PredictionDataset(Dataset):
         return len(self.image_inputs)
 
 
-
 class VideoFrameDataset(Dataset):
     def __init__(self, video_path, batch_size=32, transform=None):
+
+        # Same as in the AffectNetDataset
+        self.idx_to_class = {0: "neutral",
+                             1: "happy",
+                             2: "sad",
+                             3: "surprise",
+                             4: "fear",
+                             5: "disgust",
+                             6: "anger",
+                             7: "contempt"}
+        self.dataset_stats = {
+            "mean": [0.485, 0.456, 0.406],
+            "std": [0.229, 0.224, 0.225]
+        }
+        ####################################
+
         self.video_path = video_path
         self.batch_size = batch_size
         self.transform = transform
@@ -207,16 +224,19 @@ class VideoFrameDataset(Dataset):
         start_frame = idx * self.batch_size
         end_frame = min((idx + 1) * self.batch_size, self.frame_count)
         size = 224, 224  # Fixed to Resnet input size
+        mean = self.dataset_stats["mean"]
+        std = self.dataset_stats["std"]
         frames = []
         for frame_num in range(start_frame, end_frame):
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
             ret, frame = self.cap.read()
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             if not ret:
                 break
 
-
             tensor_trsnfrm = transforms.Compose([
                 transforms.ToTensor(),
+                transforms.Normalize(mean=mean, std=std),
                 transforms.Resize(size),
             ])
 
@@ -383,10 +403,12 @@ class AffectNetDataLoader(DataLoader):
     def get_dataset_stats():
         return AffectNet.dataset_stats
 
+
 class AsavchenkoB07DataLoader(DataLoader):
     """
     Same as the AffectNetDataLoader except that the label_map is different for the Asavhenko model.
     """
+
     @staticmethod
     def get_label_map():
         return {0: 'anger', 1: 'disgust', 2: 'fear', 3: 'happy', 4: 'neutral', 5: 'sad', 6: 'surprise'}

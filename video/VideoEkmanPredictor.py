@@ -1,11 +1,10 @@
+import json
 import numpy as np
 from tqdm import tqdm
-import argparse
 import torch
-import model.model as module_arch
-from parse_config import ConfigParser
 from data_loader.data_loaders import VideoFrameDataset
 from torch.utils.data import DataLoader
+from model.model import MobilenetModel, ResnetModel
 
 
 class VideoEkmanPredictor:
@@ -13,31 +12,26 @@ class VideoEkmanPredictor:
         self.model = None
         self.device = None
         self.config = None
+        self.map_afnet_to_easierclss = {
+            0: 7,
+            1: 0,
+            2: 1,
+            3: 2,
+            4: 3,
+            5: 5,
+            6: 4,
+            7: 6
+        }
 
     def load(self, model_pth, config_pth):
-        args = argparse.ArgumentParser(description='Generates the predictions for a given (already trained) model.'
-                                                   'Predictions are in JSON format as dictionary')
-        args.add_argument('-c', '--config', default=config_pth, type=str, required=False,
-                          help='config file path')
-        args.add_argument('-d', '--device', default=None, type=str, required=False,
-                          help='indices of GPUs to enable (default: all)')
-        args.add_argument('-p', "--predict", action="store_true", required=False)
-
-        args.add_argument('-m', '--model', default=model_pth, type=str, required=False,
-                          help='path to binary saved prediction model')
-        args.add_argument('-i', '--input', default=None, type=str, required=False,
-                          help='path to a directory of images to analyse')
-        args.add_argument('-o', '--output', default=None, type=str, required=False,
-                          help='path to a CSV file that will contain the predictions.'
-                               ' CSV header is ["imgname", "neutral", "anger", "disgust", "fear", "happy", "sad", "surprise", "none"].'
-                               ' Data is in 1-hot format ')
-
-        self.config = ConfigParser.from_args(args)
+        f = open(config_pth)
+        self.config = json.load(f)
+        f.close()
 
         # build model architecture
-        model = self.config.init_obj('arch', module_arch)
+        model = MobilenetModel()
 
-        checkpoint = torch.load(self.config.resume, map_location='cpu')
+        checkpoint = torch.load(model_pth, map_location='cpu')
         state_dict = checkpoint['state_dict']
         model.load_state_dict(state_dict)
 
@@ -47,23 +41,42 @@ class VideoEkmanPredictor:
         self.model.eval()
 
     def predict(self, in_video_pth):
-
         video_dataset = VideoFrameDataset(in_video_pth, batch_size=32, transform=None)
         test_data_loader = DataLoader(video_dataset, batch_size=None)  # None for dynamic batch size
 
         out_all_softmax = []
-        predictions = []
+        # predictions = []
         with torch.no_grad():
             for i, (data) in enumerate(tqdm(test_data_loader)):
                 data = torch.Tensor(data).to(self.device)
                 output_softmax = self.model(data)
                 output_softmax = output_softmax.cpu().numpy()
                 out_all_softmax.append(output_softmax)
-                output = np.argmax(output_softmax, axis=1)
-                predictions.append(output)
-
+                # output = np.argmax(output_softmax, axis=1)
+                # predictions.append(output)
 
         out_all_softmax = np.vstack(out_all_softmax)
 
-
         return out_all_softmax
+
+    def reorder_columns(self, input_array):
+        """
+        Reorder the columns of a 2D NumPy array based on a column mapping dictionary.
+
+        Parameters:
+        - input_array: 2D NumPy array
+        - column_mapping: Dictionary where keys are input column indices and values are output column indices.
+
+        Returns:
+        - reordered_array: 2D NumPy array with columns reordered based on the mapping.
+        """
+        column_mapping = self.map_afnet_to_easierclss
+        num_columns = input_array.shape[1]
+        reordered_array = np.empty_like(input_array)
+
+        for input_col, output_col in column_mapping.items():
+            if input_col < 0 or input_col >= num_columns or output_col < 0 or output_col >= num_columns:
+                raise ValueError("Invalid column index in column mapping")
+            reordered_array[:, output_col] = input_array[:, input_col]
+
+        return reordered_array
