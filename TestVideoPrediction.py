@@ -16,7 +16,7 @@ pr.load("Models/MNet-AfNet-CropRot-220623/model_best.pth",
 
 #
 # Run the inference
-ekman_values = pr.predict('Models/TestTwoExpressions-Crop11Rot.mp4')
+ekman_values = pr.predict('Models/TestTwoExpressions.mp4')
 # And reorder the output in the EASIER format
 ekman_values = pr.reorder_columns(ekman_values)
 

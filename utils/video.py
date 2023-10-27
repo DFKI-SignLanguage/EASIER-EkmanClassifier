@@ -8,7 +8,10 @@ from data_loader.data_loaders import VideoFrameDataset
 from torch.utils.data import DataLoader
 from model.model import MobilenetModel
 
+# See https://github.com/ipazc/mtcnn
+from mtcnn import MTCNN
 
+# List of correspondences to convert the order of columns given by the model (trained on affnet) into the EASIER order.
 AFFNET_TO_EASIER = [
     8,  # 0 --> 8 Neutral
     0,  # 1 --> 0 Happiness
@@ -32,7 +35,16 @@ class VideoEkmanPredictor:
         self.device = None
         self.config = None
 
+        self.normalization_params = {
+            "mtcnn_face_detector": MTCNN(min_face_size=50),
+            "normalize_color": False,
+            "square": True,
+            "bbox_scale": 1.1,
+            "rotate": True
+        }
+
     def load(self, model_pth, config_pth):
+        """Loads the model and the config. Mandatory before trying to predict something!"""
 
         if not os.path.exists(model_pth):
             raise Exception(f"Model file '{model_pth}' doesn't exist.")
@@ -56,12 +68,20 @@ class VideoEkmanPredictor:
         self.model = model.to(self.device)
         self.model.eval()
 
-    def predict(self, in_video_pth):
+    def predict(self, in_video_pth: str) -> np.ndarray:
+        """Given a video file, creates the predictions for each frame.
+
+        :param in_video_pth: Path to the video file
+        :return: a numpy ndarra of shape (n_frames, 9),
+         where each column is the logit values for each Ekman expression, in Affectnet order.
+        """
 
         if not os.path.exists(in_video_pth):
             raise Exception(f"Video file '{in_video_pth}' doesn't exist.")
 
-        video_dataset = VideoFrameDataset(in_video_pth, batch_size=32, transform=None)
+        video_dataset = VideoFrameDataset(in_video_pth, batch_size=32,
+                                          transform=None,
+                                          normalization_params=self.normalization_params)
         test_data_loader = DataLoader(video_dataset, batch_size=None)  # None for dynamic batch size
 
         out_all_softmax = []

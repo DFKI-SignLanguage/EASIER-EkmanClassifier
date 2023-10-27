@@ -11,6 +11,8 @@ import glob
 from pathlib import Path
 import cv2
 
+from utils.img import normalize_image
+
 # Classes expected to be in the first round of annotation on the EASIER project.
 EASIER_CLASSES = [
     "Happiness",  # 0
@@ -194,7 +196,7 @@ class PredictionDataset(Dataset):
 
 
 class VideoFrameDataset(Dataset):
-    def __init__(self, video_path, batch_size=32, transform=None):
+    def __init__(self, video_path, batch_size=32, transform=None, normalization_params=None):
 
         # Same as in the AffectNetDataset
         self.idx_to_class = {0: "neutral",
@@ -214,6 +216,8 @@ class VideoFrameDataset(Dataset):
         self.video_path = video_path
         self.batch_size = batch_size
         self.transform = transform
+        self.normalization_params = normalization_params
+
         self.cap = cv2.VideoCapture(video_path)
         self.frame_count = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
@@ -234,6 +238,18 @@ class VideoFrameDataset(Dataset):
             if not ret:
                 break
 
+            #
+            # Normalize the image, e.g., to the same format used for training.
+            #
+            # Convert frame into PIL format
+            if self.normalization_params is not None:
+                in_frame_pil = Image.fromarray(frame)
+                out_frame_pil = normalize_image(img=in_frame_pil, **self.normalization_params)
+                # PIL back to ndarray
+                frame = np.asarray(out_frame_pil)
+
+            #
+            #
             tensor_trsnfrm = transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Normalize(mean=mean, std=std),
