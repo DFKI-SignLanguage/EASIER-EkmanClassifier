@@ -6,25 +6,31 @@ from tqdm import tqdm
 import torch
 from data_loader.data_loaders import VideoFrameDataset
 from torch.utils.data import DataLoader
-from model.model import MobilenetModel, ResnetModel
+from model.model import MobilenetModel
+
+
+AFFNET_TO_EASIER = [
+    8,  # 0 --> 8 Neutral
+    0,  # 1 --> 0 Happiness
+    1,  # 2 --> 1 Sadness
+    2,  # 3 --> 2 Surprise
+    3,  # 4 --> 3 Fear
+    5,  # 5 --> 5 Disgust
+    4,  # 6 --> 4 Anger
+    6   # 7 --> 6 Contempt
+    # n/a  --> 7 Other
+]
+
+EASIER_COLUMN_COUNT = 9  # 7 Ekman + Other + Neutral
 
 
 class VideoEkmanPredictor:
+    """Support class to run the prediction of Ekman facial expressions on every frame of a video."""
 
     def __init__(self):
         self.model = None
         self.device = None
         self.config = None
-        self.map_afnet_to_easierclss = {
-            0: 7,
-            1: 0,
-            2: 1,
-            3: 2,
-            4: 3,
-            5: 5,
-            6: 4,
-            7: 6
-        }
 
     def load(self, model_pth, config_pth):
 
@@ -75,22 +81,24 @@ class VideoEkmanPredictor:
 
     def reorder_columns(self, input_array):
         """
-        Reorder the columns of a 2D NumPy array based on a column mapping dictionary.
+        Reorder the columns of the affectnet-based odel into the EASIER order.
 
         Parameters:
-        - input_array: 2D NumPy array
-        - column_mapping: Dictionary where keys are input column indices and values are output column indices.
+        - input_array: 2D NumPy array, shape (N,8)
+        - AFFNET_TO_EASIER: for each input position tells
 
         Returns:
         - reordered_array: 2D NumPy array with columns reordered based on the mapping.
         """
-        column_mapping = self.map_afnet_to_easierclss
-        num_columns = input_array.shape[1]
-        reordered_array = np.empty_like(input_array)
 
-        for input_col, output_col in column_mapping.items():
-            if input_col < 0 or input_col >= num_columns or output_col < 0 or output_col >= num_columns:
-                raise ValueError("Invalid column index in column mapping")
+        num_columns = input_array.shape[1]
+        num_samples = input_array.shape[0]
+
+        reordered_array = np.ndarray(shape=(num_samples, EASIER_COLUMN_COUNT))
+        reordered_array.fill(np.nan)
+
+        for input_col, output_col in enumerate(AFFNET_TO_EASIER):
+            assert (0 <= input_col < num_columns) and (0 <= output_col < EASIER_COLUMN_COUNT)
             reordered_array[:, output_col] = input_array[:, input_col]
 
         return reordered_array
