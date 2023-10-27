@@ -10,6 +10,7 @@ from model.model import MobilenetModel, ResnetModel
 
 
 class VideoEkmanPredictor:
+
     def __init__(self):
         self.model = None
         self.device = None

@@ -1,7 +1,7 @@
-from video import VideoEkmanPredictor
+from utils.video import VideoEkmanPredictor
 import numpy as np
 
-pr = VideoEkmanPredictor.VideoEkmanPredictor()
+pr = VideoEkmanPredictor()
 
 #pr.load("saved/models/MNet-AfNet-CropRot-220623/model_best.pth",
 #        "saved/models/MNet-AfNet-CropRot-220623/config_orig.json")
@@ -11,7 +11,7 @@ pr.load("Models/MNet-AfNet-CropRot-220623/model_best.pth",
 # Below values keep the columns in the Affectnet format
 #ekman_values = pr.predict(r'/Users/chbh01/Documents/Codebases/DFKI/ACGCode/EASIER/act2.avi')
 # ekman_values = pr.predict('Models/TestAllExpressions.mp4')
-ekman_values = pr.predict('Models/TestAllExpressions-Crop11Rot.mp4')
+ekman_values = pr.predict('Models/TestTwoExpressions-Crop11Rot.mp4')
 
 # Reorder columns to Easier format. The format is same as EAsier format with the exception that there is no "Other"
 # class and therefore there are only 8 cols
