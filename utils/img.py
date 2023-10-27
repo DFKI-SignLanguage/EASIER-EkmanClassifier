@@ -18,6 +18,13 @@ DEBUG_DRAW = False
 
 
 def _normalize_image_color(img: Image, sd_multiplier: float = 2.5) -> Image:
+    """Normalize the color band of an image. For each channel separately (RGB), the channel will be centered
+    at its mean and the center + SD*k will be scaled to fit the whole 0-255 range.
+
+    :param img:
+    :param sd_multiplier:
+    :return:
+    """
 
     bands = img.getbands()
     assert len(bands) == 3
@@ -94,15 +101,18 @@ def _scale_bbox(x: float, y: float, width: float, height: float, scale: float) -
     return nx, ny, nwidth, nheight
 
 
-def normalize_image(img: Image, mtcnn_face_detector: MTCNN,
-                     normalize_color: bool,
-                     square: bool, bbox_scale: Optional[float],
-                     rotate: bool, rot_filter: int = PIL.Image.NEAREST) -> Image:
+def normalize_image(img: Image,
+                    mtcnn_face_detector: MTCNN,
+                    normalize_color: bool,
+                    square: bool, bbox_scale: Optional[float],
+                    rotate: bool, rot_filter: int = PIL.Image.NEAREST) -> Image:
 
     """Scans files in a directory.
     For each image ending in a recognized format, detect the position of a face, crop the image,
     and save the cropped result in the destination directory.
 
+    :param img: The input image. A face will be searched in it, and properly cropper, rotated, scaled.
+    :param mtcnn_face_detector: Ths instance of MTCNN that will be used to detect the face.
     :param square: If True, the face bounds will be extended to be squared.
     :param bbox_scale: A float number scaling the edges of the cropping rectangle around its center.
     Values <1 will shrink the bbox, =1 has no effect, >1 will expand teh bbox.

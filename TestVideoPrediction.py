@@ -1,30 +1,32 @@
 from utils.video import VideoEkmanPredictor
 import numpy as np
 
+#
+# Create an instanace of the class.
 pr = VideoEkmanPredictor()
 
-#pr.load("saved/models/MNet-AfNet-CropRot-220623/model_best.pth",
-#        "saved/models/MNet-AfNet-CropRot-220623/config_orig.json")
+#
+# Load the prediction model and its configuration file
 pr.load("Models/MNet-AfNet-CropRot-220623/model_best.pth",
         "Models/MNet-AfNet-CropRot-220623/config.json")
 
-# Below values keep the columns in the Affectnet format
-#ekman_values = pr.predict(r'/Users/chbh01/Documents/Codebases/DFKI/ACGCode/EASIER/act2.avi')
-# ekman_values = pr.predict('Models/TestAllExpressions.mp4')
-ekman_values = pr.predict('Models/TestTwoExpressions-Crop11Rot.mp4')
+#
+# After Loading, many inferences can be run.
+#
 
-# Reorder columns to Easier format. The format is same as EAsier format with the exception that there is no "Other"
-# class and therefore there are only 8 cols
-# instead of 9 as in the Easier format ==> look at map_afnet_to_easierclss in VideoEkmanPredictor()
-# ekman_values = pr.reorder_columns(ekman_values)
-print("Prediction shape:", ekman_values.shape)
+#
+# Run the inference
+ekman_values = pr.predict('Models/TestTwoExpressions-Crop11Rot.mp4')
+# And reorder the output in the EASIER format
+ekman_values = pr.reorder_columns(ekman_values)
 
 assert type(ekman_values) == np.ndarray
+print("Prediction shape:", ekman_values.shape)
 
 n_frames = ekman_values.shape[0]
 print("Number of predicted frames:", n_frames)
 
-assert ekman_values.shape[1] == 7 + 1
+assert ekman_values.shape[1] == 7 + 1 + 1  # 7 Ekman + Other + Neutral
 
 print("PREDICTIONS >>>>>")
 for i in range(n_frames):
