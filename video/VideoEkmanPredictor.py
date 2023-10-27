@@ -1,4 +1,6 @@
 import json
+import os
+
 import numpy as np
 from tqdm import tqdm
 import torch
@@ -24,6 +26,13 @@ class VideoEkmanPredictor:
         }
 
     def load(self, model_pth, config_pth):
+
+        if not os.path.exists(model_pth):
+            raise Exception(f"Model file '{model_pth}' doesn't exist.")
+
+        if not os.path.exists(config_pth):
+            raise Exception(f"Config file '{config_pth}' doesn't exist.")
+
         f = open(config_pth)
         self.config = json.load(f)
         f.close()
@@ -41,6 +50,10 @@ class VideoEkmanPredictor:
         self.model.eval()
 
     def predict(self, in_video_pth):
+
+        if not os.path.exists(in_video_pth):
+            raise Exception(f"Video file '{in_video_pth}' doesn't exist.")
+
         video_dataset = VideoFrameDataset(in_video_pth, batch_size=32, transform=None)
         test_data_loader = DataLoader(video_dataset, batch_size=None)  # None for dynamic batch size
 
