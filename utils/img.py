@@ -232,7 +232,8 @@ def normalize_image_np(img_np: np.ndarray,
                     mtcnn_face_info: dict,
                     normalize_color: bool,
                     square: bool, bbox_scale: Optional[float],
-                    rotate: bool, rot_filter: int = PIL.Image.NEAREST) -> Image:
+                    rotate: bool, rot_filter: int = PIL.Image.NEAREST,
+                    scale: Tuple[int, int] = None) -> np.ndarray:
 
     """Scans files in a directory.
     For each image ending in a recognized format, detect the position of a face, crop the image,
@@ -333,6 +334,13 @@ def normalize_image_np(img_np: np.ndarray,
 
     assert img_cropped is not None
 
-    img_cropped_np = np.asarray(img_cropped)
+    if scale is not None:
+        img_scaled = img_cropped.resize(size=scale)
+    else:
+        img_scaled = img_cropped
 
-    return img_cropped_np
+    assert img_scaled is not None
+
+    img_scaled_np = np.asarray(img_scaled)
+
+    return img_scaled_np

@@ -256,17 +256,21 @@ class VideoFrameDataset(Dataset):
         self.mtcnn_face_detector = mtcnn_face_detector
         self.normalization_params = normalization_params
 
-        size = 224, 224  # Fixed to Resnet input size
         mean = self.dataset_stats["mean"]
         std = self.dataset_stats["std"]
         self.tensor_trsnfrm = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize(mean=mean, std=std),
-            transforms.Resize(size),
+            transforms.Normalize(mean=mean, std=std)
         ])
 
         self.cap = cv2.VideoCapture(video_path)
         self.frame_count = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        # Stuff to parallelize image normalization
+        #def normalization_wrapper(in_data):
+        #    img_np, mtcnn_face_info = in_data
+        #    return normalize_image_np(img_np=img_np, mtcnn_face_info=mtcnn_face_info, **self.normalization_params)
+        #self.normalization_ufunc = np.frompyfunc(func=normalization_wrapper, nin=1, nout=1)
 
     def __len__(self):
         return (self.frame_count + self.batch_size - 1) // self.batch_size
@@ -274,8 +278,6 @@ class VideoFrameDataset(Dataset):
     def __getitem__(self, idx):
         start_frame = idx * self.batch_size
         end_frame = min((idx + 1) * self.batch_size, self.frame_count)
-
-        frames = []
 
         video_frames = []
         for frame_num in range(start_frame, end_frame):
@@ -287,6 +289,10 @@ class VideoFrameDataset(Dataset):
                 break
 
         assert len(video_frames) == end_frame - start_frame
+
+
+        out_frames = []
+        #face_info_list = []
 
         for frame_num, frame in enumerate(video_frames):
 
@@ -309,14 +315,20 @@ class VideoFrameDataset(Dataset):
                     # print(face_list)
                     # Now the face with highest confidence is the first in the list
 
-                frame = normalize_image_np(img_np=frame, mtcnn_face_info=face_list[0], **self.normalization_params)
+                face_info = face_list[0]
+                #face_info_list.append(face_info)
 
-            #
-            # Pre-process through Pytorch
-            frame = self.tensor_trsnfrm(frame)
-            frames.append(torch.Tensor(frame))
+                frame = normalize_image_np(img_np=frame, mtcnn_face_info=face_info, **self.normalization_params)
+                out_frames.append(frame)
 
-        return torch.stack(frames)
+
+        #if self.normalization_params is not None:
+            #pass
+
+        # Convert the frames into Torch tensors and stack them in a 4-dimensional array
+        torch_frames = [self.tensor_trsnfrm(f) for f in out_frames]
+
+        return torch.stack(torch_frames)
 
     def __getitem__orig_(self, idx):
         start_frame = idx * self.batch_size

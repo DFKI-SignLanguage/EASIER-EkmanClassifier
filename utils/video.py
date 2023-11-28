@@ -41,7 +41,8 @@ class VideoEkmanPredictor:
             "normalize_color": False,
             "square": True,
             "bbox_scale": 1.1,
-            "rotate": True
+            "rotate": True,
+            "scale": (224, 224)
         }
 
     def load(self, model_pth, config_pth):
