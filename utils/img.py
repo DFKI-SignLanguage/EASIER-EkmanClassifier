@@ -226,3 +226,113 @@ def normalize_image(img: Image,
     assert img_cropped is not None
 
     return img_cropped
+
+
+def normalize_image_np(img_np: np.ndarray,
+                    mtcnn_face_info: dict,
+                    normalize_color: bool,
+                    square: bool, bbox_scale: Optional[float],
+                    rotate: bool, rot_filter: int = PIL.Image.NEAREST) -> Image:
+
+    """Scans files in a directory.
+    For each image ending in a recognized format, detect the position of a face, crop the image,
+    and save the cropped result in the destination directory.
+
+    :param img_np: The input image. A face will be searched in it, and properly cropper, rotated, scaled.
+    :param mtcnn_face_info: the MTCNN dictionary entry with the info about the face found that should be cropped.
+    :param square: If True, the face bounds will be extended to be squared.
+    :param bbox_scale: A float number scaling the edges of the cropping rectangle around its center.
+    Values <1 will shrink the bbox, =1 has no effect, >1 will expand teh bbox.
+    :param rotate: Whether the image should be rotate to bring the eyes at the horizontal level.
+    :param rot_filter: The rotation interpolation filter. Values (int) taken from the PIL library.
+    """
+
+    # Check for the presence of alpha channel
+    # In case, remove it because the face detector doesn't support it.
+    depth = img_np.shape[2]
+    if depth == 4:
+        # Drop the alpha channel
+        print("WARNING: Dropping alpha channel...")
+        img_np = img_np[:, :, :3]
+    elif depth == 3:
+        pass
+    else:
+        assert False
+
+    # Convert into PIL format
+    img = PIL.Image.fromarray(img_np, 'RGB')
+
+    bbox = mtcnn_face_info['box']
+    # bbox format is [x, y, width, height]
+    x, y, width, height = bbox
+
+    # ... and take note of the eyes position
+    kpoints = mtcnn_face_info['keypoints']
+    eye_r = np.asarray(kpoints['right_eye'])
+    eye_l = np.asarray(kpoints['left_eye'])
+
+    # Do we want a squared output?
+    if square:
+        if width > height:
+            # extends up and down
+            dy = width - height
+            top_dy = int(dy / 2)
+            y = y - top_dy
+            height = height + dy
+        elif width < height:
+            # extends left and right
+            dx = height - width
+            left_dx = int(dx / 2)
+            x = x - left_dx
+            width = width + dx
+        else:
+            pass
+
+        assert width == height
+
+    #
+    # Scale the box
+    if bbox_scale is not None:
+        x, y, width, height = _scale_bbox(x, y, width, height, bbox_scale)
+        x = round(x)
+        y = round(y)
+        width = round(width)
+        height = round(height)
+
+    img_cropped = img.crop((x, y, x + width, y + height))
+
+    #
+    # Color normalization
+    if normalize_color:
+        img_cropped = _normalize_image_color(img=img_cropped)
+
+    # Bring eyes to cropped coordinates
+    eye_r[0] -= x
+    eye_l[0] -= x
+    eye_r[1] -= y
+    eye_l[1] -= y
+
+    if DEBUG_DRAW:
+        draw = ImageDraw.Draw(img_cropped)
+        draw.point([(eye_r[0], eye_r[1]), (eye_l[0], eye_l[1])])
+
+    #
+    # Rotate to get the eyes at an horizontal level
+    if rotate:
+        # From Savchenko...
+        # theta=math.degrees(math.atan((right_eye_y-left_eye_y)/(right_eye_x-left_eye_x)))
+        theta = math.atan((eye_r[1] - eye_l[1]) / (eye_r[0] - eye_l[0]))
+        theta_degs = math.degrees(theta)
+        img_cropped = img_cropped.rotate(angle=theta_degs, resample=rot_filter)
+
+    # Beware! If the image crop area is outside of the visible area, PIL (at least Pillow==8.3.1)
+    # adds an alpha channel and sets the out bounds to black color with 0 on the alpha channel.
+    # Hence, we test again if there is an alpha channel and possibly remove it.
+    if img_cropped.mode == 'RGBA':
+        img_cropped = img_cropped.convert('RGB')
+
+    assert img_cropped is not None
+
+    img_cropped_np = np.asarray(img_cropped)
+
+    return img_cropped_np

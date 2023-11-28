@@ -5,4 +5,5 @@ scipy==1.7.3
 sklearn==0.0
 torch==1.12.0
 torchvision==0.13.0
-tqdm
+tqdm==4.62.3
+opencv-python==4.5.3.56

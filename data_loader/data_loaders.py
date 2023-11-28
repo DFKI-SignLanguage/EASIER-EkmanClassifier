@@ -1,17 +1,24 @@
+import os
+import glob
+from operator import attrgetter,itemgetter
+
 import torch
 from torchvision import datasets, transforms
 from base import BaseDataLoader
-import os
 from torch.utils.data import Dataset, DataLoader
+
 import pandas as pd
 from sklearn.utils import class_weight
 import numpy as np
 from PIL import Image
-import glob
 from pathlib import Path
 import cv2
 
-from utils.img import normalize_image
+from mtcnn import MTCNN
+
+
+from utils.img import normalize_image, normalize_image_np
+
 
 # Classes expected to be in the first round of annotation on the EASIER project.
 EASIER_CLASSES = [
@@ -195,8 +202,38 @@ class PredictionDataset(Dataset):
         return len(self.image_inputs)
 
 
+def _save_frame_with_faces(frame: np.ndarray, face_list: list, filename: str):
+    """Support method to save pictures showing all the faces detected.
+
+    :param frame:
+    :param face_list:
+    :param filename:
+    :return:
+    """
+
+    from PIL import ImageDraw
+
+    #
+    # Build the Image to save
+    img = Image.fromarray(frame, 'RGB')
+    draw = ImageDraw.Draw(img)
+
+    for face_info in face_list:
+        nose_x, nose_y = face_info['keypoints']['nose']
+        # draw.point([(nose_x, nose_y)], fill=(255, 25, 25, 128))
+        draw.ellipse([(nose_x-1, nose_y-1), (nose_x+1, nose_y+1)], fill=(255, 25, 25, 128), width=3)
+
+        fx, fy, fw, fh = face_info['box']
+        draw.rectangle(xy=[(fx, fy), (fx+fw, fy+fh)], fill=None, outline=(255, 25, 25, 128), width=3)
+
+        conf = face_info['confidence']
+        draw.text(xy=(nose_x, nose_y), text=f"{conf:.3f}")
+
+    img.save(filename)
+
+
 class VideoFrameDataset(Dataset):
-    def __init__(self, video_path, batch_size=32, transform=None, normalization_params=None):
+    def __init__(self, video_path, batch_size=32, transform=None, mtcnn_face_detector: MTCNN=None, normalization_params=None):
 
         # Same as in the AffectNetDataset
         self.idx_to_class = {0: "neutral",
@@ -216,7 +253,17 @@ class VideoFrameDataset(Dataset):
         self.video_path = video_path
         self.batch_size = batch_size
         self.transform = transform
+        self.mtcnn_face_detector = mtcnn_face_detector
         self.normalization_params = normalization_params
+
+        size = 224, 224  # Fixed to Resnet input size
+        mean = self.dataset_stats["mean"]
+        std = self.dataset_stats["std"]
+        self.tensor_trsnfrm = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=mean, std=std),
+            transforms.Resize(size),
+        ])
 
         self.cap = cv2.VideoCapture(video_path)
         self.frame_count = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -225,6 +272,53 @@ class VideoFrameDataset(Dataset):
         return (self.frame_count + self.batch_size - 1) // self.batch_size
 
     def __getitem__(self, idx):
+        start_frame = idx * self.batch_size
+        end_frame = min((idx + 1) * self.batch_size, self.frame_count)
+
+        frames = []
+
+        video_frames = []
+        for frame_num in range(start_frame, end_frame):
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
+            ret, frame = self.cap.read()
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            video_frames.append(frame)
+            if not ret:
+                break
+
+        assert len(video_frames) == end_frame - start_frame
+
+        for frame_num, frame in enumerate(video_frames):
+
+            #
+            # Normalize the image, e.g., to the same format used for training.
+            if self.normalization_params is not None:
+
+                # Detect the faces
+                face_list = self.mtcnn_face_detector.detect_faces(frame)
+
+                # treat cases with no faces or more than 1 face
+                if len(face_list) == 0:
+                    print(f"No faces in batch {idx}, frame {frame_num}")
+                    continue
+                if len(face_list) > 1:
+                    print(f"{len(face_list)} faces in batch {idx}, frame {frame_num}")
+                    _save_frame_with_faces(frame=frame, face_list=face_list, filename=f"batch{idx}-f{frame_num}.png")
+
+                    face_list = sorted(face_list, key=itemgetter('confidence'), reverse=True)
+                    # print(face_list)
+                    # Now the face with highest confidence is the first in the list
+
+                frame = normalize_image_np(img_np=frame, mtcnn_face_info=face_list[0], **self.normalization_params)
+
+            #
+            # Pre-process through Pytorch
+            frame = self.tensor_trsnfrm(frame)
+            frames.append(torch.Tensor(frame))
+
+        return torch.stack(frames)
+
+    def __getitem__orig_(self, idx):
         start_frame = idx * self.batch_size
         end_frame = min((idx + 1) * self.batch_size, self.frame_count)
         size = 224, 224  # Fixed to Resnet input size
