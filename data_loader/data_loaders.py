@@ -267,10 +267,12 @@ class VideoFrameDataset(Dataset):
         self.frame_count = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
         # Stuff to parallelize image normalization
-        #def normalization_wrapper(in_data):
-        #    img_np, mtcnn_face_info = in_data
-        #    return normalize_image_np(img_np=img_np, mtcnn_face_info=mtcnn_face_info, **self.normalization_params)
-        #self.normalization_ufunc = np.frompyfunc(func=normalization_wrapper, nin=1, nout=1)
+        def normalization_wrapper(in_data):
+            print("LLL", len(in_data))
+            img_np, mtcnn_face_info = in_data
+            return normalize_image_np(img_np=img_np, mtcnn_face_info=mtcnn_face_info, **self.normalization_params)
+        #self.normalization_ufunc = np.frompyfunc(normalization_wrapper, nin=1, nout=1)
+        self.normalization_ufunc = np.vectorize(normalization_wrapper)
 
     def __len__(self):
         return (self.frame_count + self.batch_size - 1) // self.batch_size
@@ -278,6 +280,7 @@ class VideoFrameDataset(Dataset):
     def __getitem__(self, idx):
         start_frame = idx * self.batch_size
         end_frame = min((idx + 1) * self.batch_size, self.frame_count)
+        n_frames = end_frame - start_frame
 
         video_frames = []
         for frame_num in range(start_frame, end_frame):
@@ -292,7 +295,7 @@ class VideoFrameDataset(Dataset):
 
 
         out_frames = []
-        #face_info_list = []
+        face_info_list = []
 
         for frame_num, frame in enumerate(video_frames):
 
@@ -303,32 +306,63 @@ class VideoFrameDataset(Dataset):
                 # Detect the faces
                 face_list = self.mtcnn_face_detector.detect_faces(frame)
 
-                # treat cases with no faces or more than 1 face
+                #
+                # Treat cases with no faces or more than 1 face
                 if len(face_list) == 0:
                     print(f"No faces in batch {idx}, frame {frame_num}")
-                    continue
-                if len(face_list) > 1:
+                    # Substitute the video frame with a dummy 8x8 black frame
+                    frame = np.full(shape=(8, 8, 3), fill_value=191, dtype=np.uint8)
+                    # We use the GREY color because it is easily predicted as NEUTRAL facial expression
+                    # Light grey 191
+                    # Predictions: 0.025 0.031 -0.034 -0.180 -0.170 -0.351 -0.264 nan 0.247
+                    # Compose a fake face detection on the 8x8 frame.
+                    face_info = {
+                                        'box': [0, 0, 7, 7],
+                                        'keypoints':
+                                        {
+                                            'nose': (4, 4),
+                                            'mouth_right': (6, 6),
+                                            'right_eye': (6, 2),
+                                            'left_eye': (2, 2),
+                                            'mouth_left': (2, 6)
+                                        },
+                                        'confidence': 0.99
+                                    }
+
+                elif len(face_list) > 1:
                     print(f"{len(face_list)} faces in batch {idx}, frame {frame_num}")
                     _save_frame_with_faces(frame=frame, face_list=face_list, filename=f"batch{idx}-f{frame_num}.png")
 
                     face_list = sorted(face_list, key=itemgetter('confidence'), reverse=True)
                     # print(face_list)
                     # Now the face with highest confidence is the first in the list
+                    face_info = face_list[0]
+                else:
+                    face_info = face_list[0]
 
-                face_info = face_list[0]
-                #face_info_list.append(face_info)
+                face_info_list.append(face_info)
 
                 frame = normalize_image_np(img_np=frame, mtcnn_face_info=face_info, **self.normalization_params)
-                out_frames.append(frame)
+                # END of frame normalization
+                #
+
+            # Append the frame to the list of final frames
+            out_frames.append(frame)
 
 
-        #if self.normalization_params is not None:
-            #pass
+        # if self.normalization_params is not None:
+        #     normalization_params = [(fr, par) for fr, par in zip(out_frames, face_info_list)]
+        #     print("RRR", len(out_frames), len(face_info_list), len(normalization_params))
+        #     np_params = np.stack(normalization_params)
+        #     normalized_frames = self.normalization_ufunc(np_params)
+        #     print("SSSS", normalized_frames.shape)
 
         # Convert the frames into Torch tensors and stack them in a 4-dimensional array
         torch_frames = [self.tensor_trsnfrm(f) for f in out_frames]
+        assert len(torch_frames) == n_frames
+        torch_frames = torch.stack(torch_frames)
 
-        return torch.stack(torch_frames)
+        return torch_frames
 
     def __getitem__orig_(self, idx):
         start_frame = idx * self.batch_size

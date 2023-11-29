@@ -20,8 +20,9 @@ pr.load("Models/MNet-AfNet-CropRot-220623/model_best.pth",
 # Run the inference
 
 before = time.time()
-ekman_values = pr.predict('Models/TestTwoExpressions.mp4')
-# ekman_values = pr.predict('Models/kGetUczx7SdsWBEfA6mImAxx.mp4')
+# ekman_values = pr.predict('Models/TestTwoExpressions.mp4')
+ekman_values = pr.predict('Models/kGetUczx7SdsWBEfA6mImAxx.mp4')
+# ekman_values = pr.predict("Models/TestEmptyBackground.mov")
 after = time.time()
 
 # And reorder the output in the EASIER format
