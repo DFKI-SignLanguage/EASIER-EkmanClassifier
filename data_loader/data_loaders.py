@@ -331,7 +331,7 @@ class VideoFrameDataset(Dataset):
 
                 elif len(face_list) > 1:
                     print(f"{len(face_list)} faces in batch {idx}, frame {frame_num}")
-                    _save_frame_with_faces(frame=frame, face_list=face_list, filename=f"batch{idx}-f{frame_num}.png")
+                    # _save_frame_with_faces(frame=frame, face_list=face_list, filename=f"batch{idx}-f{frame_num}.png")
 
                     face_list = sorted(face_list, key=itemgetter('confidence'), reverse=True)
                     # print(face_list)
