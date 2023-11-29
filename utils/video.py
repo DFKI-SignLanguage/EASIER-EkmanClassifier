@@ -8,8 +8,6 @@ from data_loader.data_loaders import VideoFrameDataset
 from torch.utils.data import DataLoader
 from model.model import MobilenetModel
 
-# See https://github.com/ipazc/mtcnn
-from mtcnn import MTCNN
 
 # List of correspondences to convert the order of columns given by the model (trained on affnet) into the EASIER order.
 AFFNET_TO_EASIER = [
@@ -34,10 +32,8 @@ class VideoEkmanPredictor:
         self.model = None
         self.device = None
         self.config = None
-        self.mtcnn_face_detector = MTCNN(min_face_size=50)
 
         self.normalization_params = {
-            # "mtcnn_face_detector": self.mtcnn_face_detector,
             "normalize_color": False,
             "square": True,
             "bbox_scale": 1.1,
@@ -83,7 +79,6 @@ class VideoEkmanPredictor:
 
         video_dataset = VideoFrameDataset(in_video_pth, batch_size=32,
                                           transform=None,
-                                          mtcnn_face_detector=self.mtcnn_face_detector,
                                           normalization_params=self.normalization_params)
         test_data_loader = DataLoader(video_dataset, batch_size=None)  # None for dynamic batch size
 

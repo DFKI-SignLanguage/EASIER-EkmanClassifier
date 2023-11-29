@@ -14,6 +14,7 @@ from PIL import Image
 from pathlib import Path
 import cv2
 
+# See https://github.com/ipazc/mtcnn
 from mtcnn import MTCNN
 
 
@@ -233,7 +234,7 @@ def _save_frame_with_faces(frame: np.ndarray, face_list: list, filename: str):
 
 
 class VideoFrameDataset(Dataset):
-    def __init__(self, video_path, batch_size=32, transform=None, mtcnn_face_detector: MTCNN=None, normalization_params=None):
+    def __init__(self, video_path, batch_size=32, transform=None, normalization_params=None):
 
         # Same as in the AffectNetDataset
         self.idx_to_class = {0: "neutral",
@@ -253,8 +254,9 @@ class VideoFrameDataset(Dataset):
         self.video_path = video_path
         self.batch_size = batch_size
         self.transform = transform
-        self.mtcnn_face_detector = mtcnn_face_detector
         self.normalization_params = normalization_params
+
+        self.mtcnn_face_detector = MTCNN(min_face_size=50)
 
         mean = self.dataset_stats["mean"]
         std = self.dataset_stats["std"]
