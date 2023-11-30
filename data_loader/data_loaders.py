@@ -15,6 +15,7 @@ from pathlib import Path
 import cv2
 
 from mtcnn import MTCNN
+from retinaface import RetinaFace
 
 
 from utils.img import normalize_image, normalize_image_np
@@ -219,12 +220,24 @@ def _save_frame_with_faces(frame: np.ndarray, face_list: list, filename: str):
     draw = ImageDraw.Draw(img)
 
     for face_info in face_list:
+        # NOSE
         nose_x, nose_y = face_info['keypoints']['nose']
         # draw.point([(nose_x, nose_y)], fill=(255, 25, 25, 128))
         draw.ellipse([(nose_x-1, nose_y-1), (nose_x+1, nose_y+1)], fill=(255, 25, 25, 128), width=3)
 
+        # BBOX
         fx, fy, fw, fh = face_info['box']
         draw.rectangle(xy=[(fx, fy), (fx+fw, fy+fh)], fill=None, outline=(255, 25, 25, 128), width=3)
+
+        # EYES
+        for eye_name in ['right_eye', 'left_eye']:
+            eye_x, eye_y = face_info['keypoints'][eye_name]
+            draw.ellipse([(eye_x - 1, eye_y - 1), (eye_x + 1, eye_y + 1)], fill=(25, 255, 25, 128), width=3)
+
+        # MOUTH
+        mouth_right_x, mouth_right_y = face_info['keypoints']['mouth_right']
+        mouth_left_x, mouth_left_y = face_info['keypoints']['mouth_left']
+        draw.line([(mouth_left_x, mouth_left_y), (mouth_right_x, mouth_right_y)], fill=(250, 250, 150, 128))
 
         conf = face_info['confidence']
         draw.text(xy=(nose_x, nose_y), text=f"{conf:.3f}")
@@ -304,7 +317,30 @@ class VideoFrameDataset(Dataset):
             if self.normalization_params is not None:
 
                 # Detect the faces
-                face_list = self.mtcnn_face_detector.detect_faces(frame)
+                # face_list = self.mtcnn_face_detector.detect_faces(frame)
+                retina_face_dict = RetinaFace.detect_faces(frame)
+                # print(retina_face_dict)
+                # Convert the retina format infor the MTCNN format
+                face_list = []
+                for ret_face_key in retina_face_dict.keys():
+                    ret_face = retina_face_dict[ret_face_key]
+                    x0,y0,x1,y1 = ret_face['facial_area']
+                    face_entry = {
+                        'box': [x0, y0, x1-x0+1, y1-y0+1],
+                        'keypoints':
+                            {
+                                'nose': ret_face['landmarks']['nose'],
+                                'mouth_right': ret_face['landmarks']['mouth_right'],
+                                'mouth_left': ret_face['landmarks']['mouth_left'],
+                                'right_eye': ret_face['landmarks']['right_eye'],
+                                'left_eye': ret_face['landmarks']['left_eye']
+                            },
+                        'confidence': ret_face['score']
+                    }
+                    face_list.append(face_entry)
+
+                # _save_frame_with_faces(frame=frame, face_list=face_list, filename=f"batch{idx}-f{frame_num}.png")
+
 
                 #
                 # Treat cases with no faces or more than 1 face
