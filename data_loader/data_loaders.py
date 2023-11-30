@@ -1,6 +1,12 @@
 import os
 import glob
-from operator import attrgetter,itemgetter
+from operator import itemgetter
+# from multiprocessing import Pool
+from multiprocessing import Manager
+from multiprocessing.pool import Pool
+import multiprocessing
+
+from concurrent.futures import ThreadPoolExecutor
 
 import torch
 from torchvision import datasets, transforms
@@ -17,9 +23,9 @@ import cv2
 # See https://github.com/ipazc/mtcnn
 from mtcnn import MTCNN
 
-
 from utils.img import normalize_image, normalize_image_np
 
+from typing import Tuple
 
 # Classes expected to be in the first round of annotation on the EASIER project.
 EASIER_CLASSES = [
@@ -256,6 +262,30 @@ class VideoFrameDataset(Dataset):
         self.transform = transform
         self.normalization_params = normalization_params
 
+        # For sharing a dictionary among Processes, see
+        # https://stackoverflow.com/questions/6832554/multiprocessing-how-do-i-share-a-dict-among-multiple-processes
+
+        def process_init(mtcnn_instances: dict):
+            pid = os.getpid()
+            print(f"Allocating MTCNN for process pid {pid}...")
+            mtcnn_instances[pid] = MTCNN(min_face_size=50)
+
+        self.process_pool_manager = Manager()
+        self.mtcnn_instances_dict = self.process_pool_manager.dict()
+        self.mtcnn_instances_dict['test'] = "Test"
+
+        # self.process_pool = Pool(processes=8, initializer=process_init, initargs=[self.mtcnn_instances_dict])
+        # ctx = multiprocessing.get_context('fork')
+        self.process_pool = Pool(processes=8)
+
+        print("MTCNN DICT SIZE", len(self.mtcnn_instances_dict))
+
+        # self.mtcnn_instances = []
+        # for i in range(batch_size):
+        #     print(f"Allocating MTCNN {i}...")
+        #     self.mtcnn_instances.append(MTCNN(min_face_size=50))
+        # print(f"Allocated {len(self.mtcnn_instances)} instances of MTCNN.")
+        # self.mtcnn_face_detector = self.mtcnn_instances[0]
         self.mtcnn_face_detector = MTCNN(min_face_size=50)
 
         mean = self.dataset_stats["mean"]
@@ -268,18 +298,56 @@ class VideoFrameDataset(Dataset):
         self.cap = cv2.VideoCapture(video_path)
         self.frame_count = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-        # Stuff to parallelize image normalization
-        def normalization_wrapper(in_data):
-            print("LLL", len(in_data))
-            img_np, mtcnn_face_info = in_data
-            return normalize_image_np(img_np=img_np, mtcnn_face_info=mtcnn_face_info, **self.normalization_params)
-        #self.normalization_ufunc = np.frompyfunc(normalization_wrapper, nin=1, nout=1)
-        self.normalization_ufunc = np.vectorize(normalization_wrapper)
-
     def __len__(self):
         return (self.frame_count + self.batch_size - 1) // self.batch_size
 
-    def __getitem__(self, idx):
+    def __getitem__(self, batch_num):
+        # return self._getitem_sequential(batch_num)
+        return self._getitem_parallel(batch_num)
+
+    def _getitem_parallel(self, batch_num):
+        start_frame = batch_num * self.batch_size
+        end_frame = min((batch_num + 1) * self.batch_size, self.frame_count)
+        n_frames = end_frame - start_frame
+
+        video_frames = []
+        for frame_num in range(start_frame, end_frame):
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
+            ret, frame = self.cap.read()
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            video_frames.append(frame)
+            if not ret:
+                break
+
+        assert len(video_frames) == end_frame - start_frame
+
+        # processes_info = [(batch_num, i, f, self.mtcnn_instances[i], self.normalization_params) for i, f in enumerate(video_frames)]
+        processes_info = [(batch_num, i, f, self.mtcnn_instances_dict, self.normalization_params) for i, f in
+                          enumerate(video_frames)]
+        #with ThreadPoolExecutor(max_workers=8) as P:
+        #with Pool(8) as P:
+        #    out_frames = P.map(_detect_face_and_normalize_image, processes_info)
+
+        #print("KKKKKK", len(self.mtcnn_instances_dict), len(self.mtcnn_instances_dict.keys()))
+        processes_info = [(batch_num, i, f, self.mtcnn_instances_dict, self.normalization_params) for i, f in
+                          enumerate(video_frames)]
+        out_frames = self.process_pool.map(_detect_face_and_normalize_image, processes_info)
+
+        # if self.normalization_params is not None:
+        #     normalization_params = [(fr, par) for fr, par in zip(out_frames, face_info_list)]
+        #     print("RRR", len(out_frames), len(face_info_list), len(normalization_params))
+        #     np_params = np.stack(normalization_params)
+        #     normalized_frames = self.normalization_ufunc(np_params)
+        #     print("SSSS", normalized_frames.shape)
+
+        # Convert the frames into Torch tensors and stack them in a 4-dimensional array
+        torch_frames = [self.tensor_trsnfrm(f) for f in out_frames]
+        assert len(torch_frames) == n_frames
+        torch_frames = torch.stack(torch_frames)
+
+        return torch_frames
+
+    def _getitem_sequential(self, idx):
         start_frame = idx * self.batch_size
         end_frame = min((idx + 1) * self.batch_size, self.frame_count)
         n_frames = end_frame - start_frame
@@ -295,12 +363,10 @@ class VideoFrameDataset(Dataset):
 
         assert len(video_frames) == end_frame - start_frame
 
-
-        out_frames = []
         face_info_list = []
+        out_frames = []
 
         for frame_num, frame in enumerate(video_frames):
-
             #
             # Normalize the image, e.g., to the same format used for training.
             if self.normalization_params is not None:
@@ -366,7 +432,7 @@ class VideoFrameDataset(Dataset):
 
         return torch_frames
 
-    def __getitem__orig_(self, idx):
+    def _getitem_orig(self, idx):
         start_frame = idx * self.batch_size
         end_frame = min((idx + 1) * self.batch_size, self.frame_count)
         size = 224, 224  # Fixed to Resnet input size
@@ -402,6 +468,79 @@ class VideoFrameDataset(Dataset):
             frames.append(torch.Tensor(frame))
 
         return torch.stack(frames)
+
+
+def _detect_face_and_normalize_image(info: Tuple[int, int, np.ndarray, dict, dict]) -> np.ndarray:
+    # print("INFO", info)
+    batch_num: int = info[0]
+    frame_num: int = info[1]
+    frame: np.ndarray = info[2]
+    # data_loader: VideoFrameDataset = info[3]
+    # mtcnn_face_detector = info[3]
+    mtcnn_face_detector_dict = info[3]
+    normalization_params = info[4]
+    # batch_num is the batch number (for debug)
+    # frame_num is the position in the array
+    # frame (in numpy format) is the image to process
+    # data_loader is the reference to the VideoFrameDataset, from which we can get useful parameters
+
+    #
+    # Normalize the image, e.g., to the same format used for training.
+    if normalization_params is not None:
+
+        # Detect the faces
+        # mtcnn_face_detector = data_loader.mtcnn_instances[frame_num]
+        # mtcnn_face_detector = mtcnn_face_detector_dict[os.getpid()]
+        print("DDDDD", type(mtcnn_face_detector_dict), len(mtcnn_face_detector_dict), mtcnn_face_detector_dict)
+        pid = os.getpid()
+        if pid not in mtcnn_face_detector_dict:
+            mtcnn_face_detector = MTCNN(min_face_size=50)
+            mtcnn_face_detector_dict[pid] = mtcnn_face_detector
+        else:
+            mtcnn_face_detector = mtcnn_face_detector_dict[pid]
+        print("EEEE", type(mtcnn_face_detector_dict), len(mtcnn_face_detector_dict), mtcnn_face_detector_dict)
+
+        face_list = mtcnn_face_detector.detect_faces(frame)
+
+        #
+        # Treat cases with no faces or more than 1 face
+        if len(face_list) == 0:
+            print(f"No faces in batch {batch_num}, frame {frame_num}")
+            # Substitute the video frame with a dummy 8x8 black frame
+            frame = np.full(shape=(8, 8, 3), fill_value=191, dtype=np.uint8)
+            # We use the GREY color because it is easily predicted as NEUTRAL facial expression
+            # Light grey 191
+            # Predictions: 0.025 0.031 -0.034 -0.180 -0.170 -0.351 -0.264 nan 0.247
+            # Compose a fake face detection on the 8x8 frame.
+            face_info = {
+                'box': [0, 0, 7, 7],
+                'keypoints':
+                    {
+                        'nose': (4, 4),
+                        'mouth_right': (6, 6),
+                        'right_eye': (6, 2),
+                        'left_eye': (2, 2),
+                        'mouth_left': (2, 6)
+                    },
+                'confidence': 0.99
+            }
+
+        elif len(face_list) > 1:
+            print(f"{len(face_list)} faces in batch {batch_num}, frame {frame_num}")
+            # _save_frame_with_faces(frame=frame, face_list=face_list, filename=f"batch{idx}-f{frame_num}.png")
+
+            face_list = sorted(face_list, key=itemgetter('confidence'), reverse=True)
+            # print(face_list)
+            # Now the face with highest confidence is the first in the list
+            face_info = face_list[0]
+        else:
+            face_info = face_list[0]
+
+        frame = normalize_image_np(img_np=frame, mtcnn_face_info=face_info, **normalization_params)
+        # END of frame normalization
+        #
+
+    return frame
 
 
 # ---------------------- AffectNet Dataset & DataLoader ---------------------- #
