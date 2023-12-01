@@ -12,12 +12,13 @@ from sklearn.utils import class_weight
 import numpy as np
 from PIL import Image
 from pathlib import Path
-import cv2
 
 from mtcnn import MTCNN
 
+import decord
 
-from utils.img import normalize_image, normalize_image_np
+
+from utils.img import normalize_image_np
 
 
 # Classes expected to be in the first round of annotation on the EASIER project.
@@ -219,12 +220,23 @@ def _save_frame_with_faces(frame: np.ndarray, face_list: list, filename: str):
     draw = ImageDraw.Draw(img)
 
     for face_info in face_list:
+        # NOSE
         nose_x, nose_y = face_info['keypoints']['nose']
-        # draw.point([(nose_x, nose_y)], fill=(255, 25, 25, 128))
         draw.ellipse([(nose_x-1, nose_y-1), (nose_x+1, nose_y+1)], fill=(255, 25, 25, 128), width=3)
 
+        # BBOX
         fx, fy, fw, fh = face_info['box']
         draw.rectangle(xy=[(fx, fy), (fx+fw, fy+fh)], fill=None, outline=(255, 25, 25, 128), width=3)
+
+        # EYES
+        for eye_name in ['right_eye', 'left_eye']:
+            eye_x, eye_y = face_info['keypoints'][eye_name]
+            draw.ellipse([(eye_x - 1, eye_y - 1), (eye_x + 1, eye_y + 1)], fill=(25, 255, 25, 128), width=3)
+
+        # MOUTH
+        mouth_right_x, mouth_right_y = face_info['keypoints']['mouth_right']
+        mouth_left_x, mouth_left_y = face_info['keypoints']['mouth_left']
+        draw.line([(mouth_left_x, mouth_left_y), (mouth_right_x, mouth_right_y)], fill=(250, 250, 150, 128))
 
         conf = face_info['confidence']
         draw.text(xy=(nose_x, nose_y), text=f"{conf:.3f}")
@@ -232,8 +244,26 @@ def _save_frame_with_faces(frame: np.ndarray, face_list: list, filename: str):
     img.save(filename)
 
 
+def _scale_mtcnn_faceinfo(face_info: dict, scale: int) -> None:
+
+    face_info['box'] = [v * scale for v in face_info['box']]
+    kp = face_info['keypoints']
+    kp['nose'] = [v * scale for v in kp['nose']]
+    kp['mouth_right'] = [v * scale for v in kp['mouth_right']]
+    kp['right_eye'] = [v * scale for v in kp['right_eye']]
+    kp['left_eye'] = [v * scale for v in kp['left_eye']]
+    kp['mouth_left'] = [v * scale for v in kp['mouth_left']]
+
+
+# This is the step used to pick pixels from np.ndarray of the video frames.
+# It is used for a quick scaling o the picture before feeding it to MTCNN.
+MTCNN_DOWNSAMPLING_STEP: int = 4
+
+
 class VideoFrameDataset(Dataset):
-    def __init__(self, video_path, batch_size=32, transform=None, mtcnn_face_detector: MTCNN=None, normalization_params=None):
+    def __init__(self, video_path, batch_size=32, transform=None,
+                 mtcnn_face_detector: MTCNN = None,
+                 normalization_params: dict = None):
 
         # Same as in the AffectNetDataset
         self.idx_to_class = {0: "neutral",
@@ -263,16 +293,8 @@ class VideoFrameDataset(Dataset):
             transforms.Normalize(mean=mean, std=std)
         ])
 
-        self.cap = cv2.VideoCapture(video_path)
-        self.frame_count = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
-        # Stuff to parallelize image normalization
-        def normalization_wrapper(in_data):
-            print("LLL", len(in_data))
-            img_np, mtcnn_face_info = in_data
-            return normalize_image_np(img_np=img_np, mtcnn_face_info=mtcnn_face_info, **self.normalization_params)
-        #self.normalization_ufunc = np.frompyfunc(normalization_wrapper, nin=1, nout=1)
-        self.normalization_ufunc = np.vectorize(normalization_wrapper)
+        self.video_reader = decord.VideoReader(video_path, ctx=decord.cpu(0))
+        self.frame_count = len(self.video_reader)
 
     def __len__(self):
         return (self.frame_count + self.batch_size - 1) // self.batch_size
@@ -282,20 +304,16 @@ class VideoFrameDataset(Dataset):
         end_frame = min((idx + 1) * self.batch_size, self.frame_count)
         n_frames = end_frame - start_frame
 
-        video_frames = []
-        for frame_num in range(start_frame, end_frame):
-            self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
-            ret, frame = self.cap.read()
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            video_frames.append(frame)
-            if not ret:
-                break
+        #
+        # Read a whole back of video frames Using decord
+        # https://medium.com/@haydenfaulkner/extracting-frames-fast-from-a-video-using-opencv-and-python-73b9b7dc9661
+        frames_list = list(range(start_frame, end_frame))
+        frames_batch = self.video_reader.get_batch(frames_list)
+        video_frames = frames_batch.asnumpy()
 
         assert len(video_frames) == end_frame - start_frame
 
-
         out_frames = []
-        face_info_list = []
 
         for frame_num, frame in enumerate(video_frames):
 
@@ -303,8 +321,12 @@ class VideoFrameDataset(Dataset):
             # Normalize the image, e.g., to the same format used for training.
             if self.normalization_params is not None:
 
-                # Detect the faces
-                face_list = self.mtcnn_face_detector.detect_faces(frame)
+                # Detect the faces (on a scaled down version of the image
+                if MTCNN_DOWNSAMPLING_STEP > 1:
+                    lo_res_frame = frame[::MTCNN_DOWNSAMPLING_STEP, ::MTCNN_DOWNSAMPLING_STEP, :]
+                else:
+                    lo_res_frame = frame
+                face_list = self.mtcnn_face_detector.detect_faces(lo_res_frame)
 
                 #
                 # Treat cases with no faces or more than 1 face
@@ -340,7 +362,11 @@ class VideoFrameDataset(Dataset):
                 else:
                     face_info = face_list[0]
 
-                face_info_list.append(face_info)
+                if MTCNN_DOWNSAMPLING_STEP > 1:
+                    _scale_mtcnn_faceinfo(face_info=face_info, scale=MTCNN_DOWNSAMPLING_STEP)
+
+                # For DEBUG only
+                # _save_frame_with_faces(frame=frame, face_list=face_list, filename=f"batch{idx}-f{frame_num}.png")
 
                 frame = normalize_image_np(img_np=frame, mtcnn_face_info=face_info, **self.normalization_params)
                 # END of frame normalization
@@ -349,57 +375,12 @@ class VideoFrameDataset(Dataset):
             # Append the frame to the list of final frames
             out_frames.append(frame)
 
-
-        # if self.normalization_params is not None:
-        #     normalization_params = [(fr, par) for fr, par in zip(out_frames, face_info_list)]
-        #     print("RRR", len(out_frames), len(face_info_list), len(normalization_params))
-        #     np_params = np.stack(normalization_params)
-        #     normalized_frames = self.normalization_ufunc(np_params)
-        #     print("SSSS", normalized_frames.shape)
-
         # Convert the frames into Torch tensors and stack them in a 4-dimensional array
         torch_frames = [self.tensor_trsnfrm(f) for f in out_frames]
         assert len(torch_frames) == n_frames
         torch_frames = torch.stack(torch_frames)
 
         return torch_frames
-
-    def __getitem__orig_(self, idx):
-        start_frame = idx * self.batch_size
-        end_frame = min((idx + 1) * self.batch_size, self.frame_count)
-        size = 224, 224  # Fixed to Resnet input size
-        mean = self.dataset_stats["mean"]
-        std = self.dataset_stats["std"]
-        frames = []
-        for frame_num in range(start_frame, end_frame):
-            self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
-            ret, frame = self.cap.read()
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            if not ret:
-                break
-
-            #
-            # Normalize the image, e.g., to the same format used for training.
-            #
-            # Convert frame into PIL format
-            if self.normalization_params is not None:
-                in_frame_pil = Image.fromarray(frame)
-                out_frame_pil = normalize_image(img=in_frame_pil, **self.normalization_params)
-                # PIL back to ndarray
-                frame = np.asarray(out_frame_pil)
-
-            #
-            #
-            tensor_trsnfrm = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize(mean=mean, std=std),
-                transforms.Resize(size),
-            ])
-
-            frame = tensor_trsnfrm(frame)
-            frames.append(torch.Tensor(frame))
-
-        return torch.stack(frames)
 
 
 # ---------------------- AffectNet Dataset & DataLoader ---------------------- #
