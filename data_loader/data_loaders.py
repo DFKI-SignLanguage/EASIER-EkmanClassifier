@@ -244,25 +244,31 @@ def _save_frame_with_faces(frame: np.ndarray, face_list: list, filename: str):
     img.save(filename)
 
 
-def _scale_mtcnn_faceinfo(face_info: dict, scale: int) -> None:
+def _scale_faceinfo(face_info: dict, hscale: int, vscale: int) -> None:
 
-    face_info['box'] = [v * scale for v in face_info['box']]
+    from typing import List
+
+    def _scale_2d_point(p, hs, vs) -> List[int]:
+        return [p[0] * hs, p[1] * vs]
+
+    face_info['box'] = _scale_2d_point(face_info['box'][:2], hscale, vscale) + _scale_2d_point(face_info['box'][2:], hscale, vscale)
     kp = face_info['keypoints']
-    kp['nose'] = [v * scale for v in kp['nose']]
-    kp['mouth_right'] = [v * scale for v in kp['mouth_right']]
-    kp['right_eye'] = [v * scale for v in kp['right_eye']]
-    kp['left_eye'] = [v * scale for v in kp['left_eye']]
-    kp['mouth_left'] = [v * scale for v in kp['mouth_left']]
+    kp['nose'] = _scale_2d_point(kp['nose'], hscale, vscale)
+    kp['mouth_right'] = _scale_2d_point(kp['mouth_right'], hscale, vscale)
+    kp['right_eye'] = _scale_2d_point(kp['right_eye'], hscale, vscale)
+    kp['left_eye'] = _scale_2d_point(kp['left_eye'], hscale, vscale)
+    kp['mouth_left'] = _scale_2d_point(kp['mouth_left'], hscale, vscale)
 
 
 # This is the step used to pick pixels from np.ndarray of the video frames.
 # It is used for a quick scaling o the picture before feeding it to MTCNN.
-MTCNN_DOWNSAMPLING_STEP: int = 4
+FAST_DOWNSAMPLING_STEP: int = 1
 
+from utils.mediapipefacedetection import MediaPipeFaceDetector
 
 class VideoFrameDataset(Dataset):
     def __init__(self, video_path, batch_size=32, transform=None,
-                 mtcnn_face_detector: MTCNN = None,
+                 face_detector = None,
                  normalization_params: dict = None):
 
         # Same as in the AffectNetDataset
@@ -283,7 +289,7 @@ class VideoFrameDataset(Dataset):
         self.video_path = video_path
         self.batch_size = batch_size
         self.transform = transform
-        self.mtcnn_face_detector = mtcnn_face_detector
+        self.face_detector = face_detector
         self.normalization_params = normalization_params
 
         mean = self.dataset_stats["mean"]
@@ -322,11 +328,11 @@ class VideoFrameDataset(Dataset):
             if self.normalization_params is not None:
 
                 # Detect the faces (on a scaled down version of the image
-                if MTCNN_DOWNSAMPLING_STEP > 1:
-                    lo_res_frame = frame[::MTCNN_DOWNSAMPLING_STEP, ::MTCNN_DOWNSAMPLING_STEP, :]
+                if FAST_DOWNSAMPLING_STEP > 1:
+                    lo_res_frame = frame[::FAST_DOWNSAMPLING_STEP, ::FAST_DOWNSAMPLING_STEP, :]
                 else:
                     lo_res_frame = frame
-                face_list = self.mtcnn_face_detector.detect_faces(lo_res_frame)
+                face_list = self.face_detector.detect_faces(lo_res_frame)
 
                 #
                 # Treat cases with no faces or more than 1 face
@@ -362,8 +368,13 @@ class VideoFrameDataset(Dataset):
                 else:
                     face_info = face_list[0]
 
-                if MTCNN_DOWNSAMPLING_STEP > 1:
-                    _scale_mtcnn_faceinfo(face_info=face_info, scale=MTCNN_DOWNSAMPLING_STEP)
+                if type(self.face_detector) == MediaPipeFaceDetector:
+                    h, w, _ = frame.shape
+                    _scale_faceinfo(face_info=face_info, hscale=int(w), vscale=int(h))
+                else:
+                    # When using MTCNN, face info are already in pixel coords
+                    if FAST_DOWNSAMPLING_STEP > 1:
+                        _scale_faceinfo(face_info=face_info, hscale=FAST_DOWNSAMPLING_STEP, vscale=FAST_DOWNSAMPLING_STEP)
 
                 # For DEBUG only
                 # _save_frame_with_faces(frame=frame, face_list=face_list, filename=f"batch{idx}-f{frame_num}.png")

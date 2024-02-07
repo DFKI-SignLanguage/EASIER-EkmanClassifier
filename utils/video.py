@@ -11,6 +11,9 @@ from model.model import MobilenetModel
 # See https://github.com/ipazc/mtcnn
 from mtcnn import MTCNN
 
+from utils.mediapipefacedetection import MediaPipeFaceDetector
+
+
 # List of correspondences to convert the order of columns given by the model (trained on affnet) into the EASIER order.
 AFFNET_TO_EASIER = [
     8,  # 0 --> 8 Neutral
@@ -27,6 +30,7 @@ AFFNET_TO_EASIER = [
 EASIER_COLUMN_COUNT = 9  # 7 Ekman + Other + Neutral
 
 
+
 class VideoEkmanPredictor:
     """Support class to run the prediction of Ekman facial expressions on every frame of a video."""
 
@@ -34,11 +38,11 @@ class VideoEkmanPredictor:
         self.model = None
         self.device = None
         self.config = None
-        self.mtcnn_face_detector = MTCNN(min_face_size=50)
+        #self.face_detector = MTCNN(min_face_size=50)
+        self.face_detector = MediaPipeFaceDetector(search_head=False)
 
         self.normalization_params = {
-            # "mtcnn_face_detector": self.mtcnn_face_detector,
-            "normalize_color": False,
+            "color_normalization": None,
             "square": True,
             "bbox_scale": 1.1,
             "rotate": True,
@@ -83,7 +87,7 @@ class VideoEkmanPredictor:
 
         video_dataset = VideoFrameDataset(in_video_pth, batch_size=32,
                                           transform=None,
-                                          mtcnn_face_detector=self.mtcnn_face_detector,
+                                          face_detector=self.face_detector,
                                           normalization_params=self.normalization_params)
         test_data_loader = DataLoader(video_dataset, batch_size=None)  # None for dynamic batch size
 

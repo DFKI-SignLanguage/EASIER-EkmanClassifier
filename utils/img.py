@@ -2,6 +2,8 @@ import math
 
 import numpy as np
 
+import cv2
+
 import PIL
 import PIL.Image
 from PIL.Image import Image
@@ -17,7 +19,7 @@ from typing import Tuple, Optional
 DEBUG_DRAW = False
 
 
-def _normalize_image_color(img: Image, sd_multiplier: float = 2.5) -> Image:
+def _normalize_image_meanstd(img: Image, sd_multiplier: float = 2.5) -> Image:
     """Normalize the color band of an image. For each channel separately (RGB), the channel will be centered
     at its mean and the center + SD*k will be scaled to fit the whole 0-255 range.
 
@@ -55,6 +57,39 @@ def _normalize_image_color(img: Image, sd_multiplier: float = 2.5) -> Image:
     out_img = PIL.Image.fromarray(obj=out_img_data, mode='RGB')
 
     return out_img
+
+
+def _normalize_image_histeq(img: Image) -> Image:
+    """
+    See: https://docs.opencv.org/4.x/d4/d1b/tutorial_histogram_equalization.html
+
+    :param img:
+    :return:
+    """
+
+    bands = img.getbands()
+    assert len(bands) == 3
+
+    # Prepare an array for the output image
+    w, h = img.size
+    out_img_data = np.ndarray(shape=(h, w, 3), dtype='uint8')
+
+
+    for band_i in range(len(bands)):
+
+        img_band_data = np.asarray(img.getdata(band=band_i))
+        normalized_band_data = cv2.equalizeHist(src=img_band_data)
+
+        # Clip the color data in range [0,255]
+        # and write the color channel into the target array
+        out_img_data[:, :, band_i] = normalized_band_data.reshape(h, w)
+
+
+
+    out_img = PIL.Image.fromarray(obj=out_img_data, mode='RGB')
+
+    return out_img
+
 
 
 def _scale_bbox(x: float, y: float, width: float, height: float, scale: float) -> Tuple[float, float, float, float]:
@@ -196,7 +231,7 @@ def normalize_image(img: Image,
     #
     # Color normalization
     if normalize_color:
-        img_cropped = _normalize_image_color(img=img_cropped)
+        img_cropped = _normalize_image_meanstd(img=img_cropped)
 
     # Bring eyes to cropped coordinates
     eye_r[0] -= x
@@ -229,18 +264,17 @@ def normalize_image(img: Image,
 
 
 def normalize_image_np(img_np: np.ndarray,
-                    mtcnn_face_info: dict,
-                    normalize_color: bool,
-                    square: bool, bbox_scale: Optional[float],
-                    rotate: bool, rot_filter: int = PIL.Image.NEAREST,
-                    scale: Tuple[int, int] = None) -> np.ndarray:
+                       mtcnn_face_info: dict,
+                       color_normalization: str,  ##Literal["meanstd", "hist_eq", None],
+                       square: bool, bbox_scale: Optional[float],
+                       rotate: bool, rot_filter = PIL.Image.NEAREST,
+                       scale: Tuple[int, int] = None) -> np.ndarray:
 
-    """Scans files in a directory.
-    For each image ending in a recognized format, detect the position of a face, crop the image,
-    and save the cropped result in the destination directory.
+    """Apply normalization to a frame.
 
     :param img_np: The input image. A face will be searched in it, and properly cropper, rotated, scaled.
     :param mtcnn_face_info: the MTCNN dictionary entry with the info about the face found that should be cropped.
+    :param color_normalization: Select None, or the type or color normalization that you want to use.
     :param square: If True, the face bounds will be extended to be squared.
     :param bbox_scale: A float number scaling the edges of the cropping rectangle around its center.
     Values <1 will shrink the bbox, =1 has no effect, >1 will expand teh bbox.
@@ -304,8 +338,14 @@ def normalize_image_np(img_np: np.ndarray,
 
     #
     # Color normalization
-    if normalize_color:
-        img_cropped = _normalize_image_color(img=img_cropped)
+    if color_normalization is None:
+        pass
+    elif color_normalization == "meanstd":
+        img_cropped = _normalize_image_meanstd(img=img_cropped)
+    elif color_normalization == "histeq":
+        pass
+    else:
+        raise Exception(f"Unknown color normalization technique {color_normalization}")
 
     # Bring eyes to cropped coordinates
     eye_r[0] -= x
