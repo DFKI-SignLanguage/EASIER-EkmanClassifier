@@ -1,9 +1,12 @@
 import argparse
 
+import numpy as np
+
 # See https://github.com/ipazc/mtcnn
 from mtcnn import MTCNN
 
-from utils.img import normalize_image
+from utils.img import normalize_image_np
+from utils.img import save_frame_with_faces
 
 import PIL
 import PIL.Image
@@ -21,20 +24,21 @@ DEBUG_DRAW = False
 
 def normalize_images(in_dir: str, out_dir: str,
                      tolerant: bool,
-                     normalize_color: bool,
+                     color_normalization: Optional[str],
                      square: bool, bbox_scale: Optional[float],
                      rotate: bool, rot_filter: int = PIL.Image.NEAREST) -> None:
     """Scans files in a directory.
     For each image ending in a recognized format, detect the position of a face, crop the image,
     and save the cropped result in the destination directory.
 
+    :param color_normalization: if not None, a string with the  color normalization technique.
     :param square: If True, the face bounds will be extended to be squared.
     :param tolerant: If true, the iteration will continue on warnings, instead of stopping.
     :param out_dir: The output directory. Created if not existing.
     :param in_dir: Directory to scan. Will not be recursed.
     :param bbox_scale: A float number scaling the edges of the cropping rectangle around its center.
-    Values <1 will shink the bbox, =1 has no effect, >1 will expand teh bbox.
-    :param rotate: Wether the image should be rotate to bring the eyes at the horizonal lavel.
+    Values <1 will shrink the bbox, =1 has no effect, >1 will expand teh bbox.
+    :param rotate: Whether the image should be rotated to bring the eyes at the horizontal level.
     :param rot_filter: The rotation interpolation filter. Values (int) taken from the PIL library.
     """
 
@@ -54,15 +58,39 @@ def normalize_images(in_dir: str, out_dir: str,
         # Load the image
         f_path = os.path.join(in_dir, f)
         img: Image = PIL.Image.open(f_path)
+        img_np: np.ndarray = np.asarray(img)
         # print(img.size)
 
+        #
+        # Ask MTCNN to find the faces
+        # print(img_np.shape)
+        face_list = detector.detect_faces(img_np)
+        # print(face_list)
+        if DEBUG_DRAW:
+            save_frame_with_faces(frame=img_np, face_list=face_list, filename=f"normimg-frame{i:04d}.png")
+
+        face_info = None
+
+        if len(face_list) == 0:
+            # No faces?
+            raise Exception("No faces detected!")
+        elif len(face_list) > 1:
+            # More faces?
+            raise Exception(f"more than one face detected: {len(face_list)}")
+        else:
+            # Take the first face by default
+            face_info = face_list[0]
+
+        assert face_info is not None
+
         try:
-            img_cropped = normalize_image(img=img, mtcnn_face_detector=detector,
-                                 normalize_color=normalize_color,
-                                 square=square,
-                                 bbox_scale=bbox_scale,
-                                 rotate=rotate,
-                                 rot_filter=rot_filter)
+            img_cropped = normalize_image_np(img_np=img_np,
+                                             face_info=face_info,
+                                             color_normalization=color_normalization,
+                                             square=square,
+                                             bbox_scale=bbox_scale,
+                                             rotate=rotate,
+                                             rot_filter=rot_filter)
         except Exception as e:
 
             if tolerant:
@@ -74,7 +102,8 @@ def normalize_images(in_dir: str, out_dir: str,
                 raise e
 
         out_name = os.path.join(out_dir, f)
-        img_cropped.save(out_name)
+
+        PIL.Image.fromarray(img_cropped).save(out_name)
 
 
 if __name__ == '__main__':
@@ -84,8 +113,11 @@ if __name__ == '__main__':
                         help='If tolerant, do NOT stop each time there is a warning'
                              ' (e.g., more faces in a pic, no face in the pic, ...)')
     parser.add_argument('-nc', '--normalize-color', action='store_true', default=False, required=False,
-                        help="If specified, the image color is normalized by centering and scaling the color histogram"
+                        help="[Deprecated. Use --color-normalization instead] If specified, the image color is normalized by centering and scaling the color histogram"
                              "separately for each of the RGB color channels")
+    parser.add_argument('-cn', '--color-normalization', default=None, required=False,
+                        help="If specified, select either: 'mean_std' for centering the color bands around their mean and dividing by the standard deviation;"
+                             " 'hist_eq' for running an Histogram Equalization ")
     parser.add_argument('-s', '--square', action='store_true', default=False, required=False,
                         help='If selected, the output cropped region will be forced to have 1:1 ratio'
                              ' by extending by the same amount of pixels in both directions'
@@ -111,9 +143,14 @@ if __name__ == '__main__':
     outdir = args.output
     tolerant = args.tolerant
     norm_color = args.normalize_color
+    color_normalization = args.color_normalization
     square = args.square
     bbox_scale = args.bbox_scale
     rotate = args.rotate
+
+    # Support for old option
+    if norm_color:
+        color_normalization = "mean_std"
 
     if args.rot_filter_bilinear:
         rot_filter = PIL.Image.Resampling.BILINEAR
@@ -125,7 +162,7 @@ if __name__ == '__main__':
 
     normalize_images(in_dir=indir, out_dir=outdir,
                      tolerant=tolerant,
-                     normalize_color=norm_color,
+                     color_normalization=color_normalization,
                      square=square, bbox_scale=bbox_scale, rotate=rotate, rot_filter=rot_filter)
 
     print("Done.")

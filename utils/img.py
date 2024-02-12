@@ -7,7 +7,7 @@ import cv2
 import PIL
 import PIL.Image
 from PIL.Image import Image
-from PIL import ImageDraw
+from PIL import ImageDraw, Image
 
 # See https://github.com/ipazc/mtcnn
 from mtcnn import MTCNN
@@ -77,13 +77,12 @@ def _normalize_image_histeq(img: Image) -> Image:
 
     for band_i in range(len(bands)):
 
-        img_band_data = np.asarray(img.getdata(band=band_i))
+        img_band_data = np.asarray(img.getdata(band=band_i)).astype(np.uint8)
         normalized_band_data = cv2.equalizeHist(src=img_band_data)
 
         # Clip the color data in range [0,255]
         # and write the color channel into the target array
         out_img_data[:, :, band_i] = normalized_band_data.reshape(h, w)
-
 
 
     out_img = PIL.Image.fromarray(obj=out_img_data, mode='RGB')
@@ -140,7 +139,7 @@ def normalize_image(img: Image,
                     mtcnn_face_detector: MTCNN,
                     normalize_color: bool,
                     square: bool, bbox_scale: Optional[float],
-                    rotate: bool, rot_filter: int = PIL.Image.NEAREST) -> Image:
+                    rotate: bool, rot_filter = PIL.Image.NEAREST) -> Image:
 
     """Scans files in a directory.
     For each image ending in a recognized format, detect the position of a face, crop the image,
@@ -264,16 +263,17 @@ def normalize_image(img: Image,
 
 
 def normalize_image_np(img_np: np.ndarray,
-                       mtcnn_face_info: dict,
-                       color_normalization: str,  ##Literal["meanstd", "hist_eq", None],
+                       face_info: dict,
+                       color_normalization: str,  ##Literal["meanstd", "histeq", None],
                        square: bool, bbox_scale: Optional[float],
                        rotate: bool, rot_filter = PIL.Image.NEAREST,
                        scale: Tuple[int, int] = None) -> np.ndarray:
 
     """Apply normalization to a frame.
 
+    :param scale: Scale the output image to the specified resolution. Useful to anticipate the input resolution of CNNs.
     :param img_np: The input image. A face will be searched in it, and properly cropper, rotated, scaled.
-    :param mtcnn_face_info: the MTCNN dictionary entry with the info about the face found that should be cropped.
+    :param face_info: the MTCNN dictionary entry with the info about the face found that should be cropped.
     :param color_normalization: Select None, or the type or color normalization that you want to use.
     :param square: If True, the face bounds will be extended to be squared.
     :param bbox_scale: A float number scaling the edges of the cropping rectangle around its center.
@@ -297,12 +297,12 @@ def normalize_image_np(img_np: np.ndarray,
     # Convert into PIL format
     img = PIL.Image.fromarray(img_np, 'RGB')
 
-    bbox = mtcnn_face_info['box']
+    bbox = face_info['box']
     # bbox format is [x, y, width, height]
     x, y, width, height = bbox
 
     # ... and take note of the eyes position
-    kpoints = mtcnn_face_info['keypoints']
+    kpoints = face_info['keypoints']
     eye_r = np.asarray(kpoints['right_eye'])
     eye_l = np.asarray(kpoints['left_eye'])
 
@@ -343,7 +343,7 @@ def normalize_image_np(img_np: np.ndarray,
     elif color_normalization == "meanstd":
         img_cropped = _normalize_image_meanstd(img=img_cropped)
     elif color_normalization == "histeq":
-        pass
+        img_cropped = _normalize_image_histeq(img=img_cropped)
     else:
         raise Exception(f"Unknown color normalization technique {color_normalization}")
 
@@ -384,3 +384,44 @@ def normalize_image_np(img_np: np.ndarray,
     img_scaled_np = np.asarray(img_scaled)
 
     return img_scaled_np
+
+
+def save_frame_with_faces(frame: np.ndarray, face_list: list, filename: str):
+    """Support method to save pictures showing all the faces detected.
+
+    :param frame:
+    :param face_list:
+    :param filename:
+    :return:
+    """
+
+    from PIL import ImageDraw
+
+    #
+    # Build the Image to save
+    img = Image.fromarray(frame, 'RGB')
+    draw = ImageDraw.Draw(img)
+
+    for face_info in face_list:
+        # NOSE
+        nose_x, nose_y = face_info['keypoints']['nose']
+        draw.ellipse([(nose_x-1, nose_y-1), (nose_x+1, nose_y+1)], fill=(255, 25, 25, 128), width=3)
+
+        # BBOX
+        fx, fy, fw, fh = face_info['box']
+        draw.rectangle(xy=((fx, fy), (fx+fw, fy+fh)), fill=None, outline=(255, 25, 25, 128), width=3)
+
+        # EYES
+        for eye_name in ['right_eye', 'left_eye']:
+            eye_x, eye_y = face_info['keypoints'][eye_name]
+            draw.ellipse([(eye_x - 1, eye_y - 1), (eye_x + 1, eye_y + 1)], fill=(25, 255, 25, 128), width=3)
+
+        # MOUTH
+        mouth_right_x, mouth_right_y = face_info['keypoints']['mouth_right']
+        mouth_left_x, mouth_left_y = face_info['keypoints']['mouth_left']
+        draw.line([(mouth_left_x, mouth_left_y), (mouth_right_x, mouth_right_y)], fill=(250, 250, 150, 128))
+
+        conf = face_info['confidence']
+        draw.text(xy=(nose_x, nose_y), text=f"{conf:.3f}")
+
+    img.save(filename)

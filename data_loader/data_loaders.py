@@ -1,9 +1,9 @@
 import os
 import glob
-from operator import attrgetter,itemgetter
+from operator import itemgetter
 
 import torch
-from torchvision import datasets, transforms
+from torchvision import transforms
 from base import BaseDataLoader
 from torch.utils.data import Dataset, DataLoader
 
@@ -12,8 +12,6 @@ from sklearn.utils import class_weight
 import numpy as np
 from PIL import Image
 from pathlib import Path
-
-from mtcnn import MTCNN
 
 import decord
 
@@ -203,47 +201,6 @@ class PredictionDataset(Dataset):
         return len(self.image_inputs)
 
 
-def _save_frame_with_faces(frame: np.ndarray, face_list: list, filename: str):
-    """Support method to save pictures showing all the faces detected.
-
-    :param frame:
-    :param face_list:
-    :param filename:
-    :return:
-    """
-
-    from PIL import ImageDraw
-
-    #
-    # Build the Image to save
-    img = Image.fromarray(frame, 'RGB')
-    draw = ImageDraw.Draw(img)
-
-    for face_info in face_list:
-        # NOSE
-        nose_x, nose_y = face_info['keypoints']['nose']
-        draw.ellipse([(nose_x-1, nose_y-1), (nose_x+1, nose_y+1)], fill=(255, 25, 25, 128), width=3)
-
-        # BBOX
-        fx, fy, fw, fh = face_info['box']
-        draw.rectangle(xy=[(fx, fy), (fx+fw, fy+fh)], fill=None, outline=(255, 25, 25, 128), width=3)
-
-        # EYES
-        for eye_name in ['right_eye', 'left_eye']:
-            eye_x, eye_y = face_info['keypoints'][eye_name]
-            draw.ellipse([(eye_x - 1, eye_y - 1), (eye_x + 1, eye_y + 1)], fill=(25, 255, 25, 128), width=3)
-
-        # MOUTH
-        mouth_right_x, mouth_right_y = face_info['keypoints']['mouth_right']
-        mouth_left_x, mouth_left_y = face_info['keypoints']['mouth_left']
-        draw.line([(mouth_left_x, mouth_left_y), (mouth_right_x, mouth_right_y)], fill=(250, 250, 150, 128))
-
-        conf = face_info['confidence']
-        draw.text(xy=(nose_x, nose_y), text=f"{conf:.3f}")
-
-    img.save(filename)
-
-
 def _scale_faceinfo(face_info: dict, hscale: int, vscale: int) -> None:
 
     from typing import List
@@ -379,7 +336,7 @@ class VideoFrameDataset(Dataset):
                 # For DEBUG only
                 # _save_frame_with_faces(frame=frame, face_list=face_list, filename=f"batch{idx}-f{frame_num}.png")
 
-                frame = normalize_image_np(img_np=frame, mtcnn_face_info=face_info, **self.normalization_params)
+                frame = normalize_image_np(img_np=frame, face_info=face_info, **self.normalization_params)
                 # END of frame normalization
                 #
 
