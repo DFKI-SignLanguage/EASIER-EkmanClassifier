@@ -85,6 +85,15 @@ NORMALIZATION_PARAMS=--normalize-color --square --rotate --bbox-scale 1.2
 endif
 
 
+ifeq ($(IMG_PREPROC), CNormEqCrop11Rot)
+NORMALIZATION_PARAMS=--color-normalization hist_eq --square --rotate --bbox-scale 1.1
+endif
+
+ifeq ($(IMG_PREPROC), CNormEqCrop12Rot)
+NORMALIZATION_PARAMS=--color-normalization hist_eq --square --rotate --bbox-scale 1.2
+endif
+
+
 
 # Normalize the images of the tested data
 $(NORMALIZED_IMAGES): $(IMAGES)
