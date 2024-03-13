@@ -264,7 +264,7 @@ def normalize_image(img: Image,
 
 def normalize_image_np(img_np: np.ndarray,
                        face_info: dict,
-                       color_normalization: str,  ##Literal["meanstd", "histeq", None],
+                       color_normalization: str,  ##Literal["mean_std", "hist_eq", None],
                        square: bool, bbox_scale: Optional[float],
                        rotate: bool, rot_filter = PIL.Image.NEAREST,
                        scale: Tuple[int, int] = None) -> np.ndarray:
@@ -340,9 +340,9 @@ def normalize_image_np(img_np: np.ndarray,
     # Color normalization
     if color_normalization is None:
         pass
-    elif color_normalization == "meanstd":
+    elif color_normalization == "mean_std":
         img_cropped = _normalize_image_meanstd(img=img_cropped)
-    elif color_normalization == "histeq":
+    elif color_normalization == "hist_eq":
         img_cropped = _normalize_image_histeq(img=img_cropped)
     else:
         raise Exception(f"Unknown color normalization technique {color_normalization}")

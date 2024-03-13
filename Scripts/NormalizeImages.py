@@ -69,40 +69,58 @@ def normalize_images(in_dir: str, out_dir: str,
         if DEBUG_DRAW:
             save_frame_with_faces(frame=img_np, face_list=face_list, filename=f"normimg-frame{i:04d}.png")
 
+        #
+        # Check how many faces (if any) we detected
         face_info = None
 
         if len(face_list) == 0:
             # No faces?
-            raise Exception("No faces detected!")
+            msg = "No faces detected!"
+            if tolerant:
+                # If tolerant, just return the full image
+                print("WARNING: ", msg)
+            else:
+                # Else, forward the exception
+                raise Exception(msg)
         elif len(face_list) > 1:
             # More faces?
-            raise Exception(f"more than one face detected: {len(face_list)}")
+            msg = f"More than one face detected: {len(face_list)}"
+            if tolerant:
+                # If tolerant, just take the first image
+                print("WARNING: ", msg)
+                face_info = face_list[0]
+            else:
+                # Else, forward the exception
+                raise Exception(msg)
         else:
             # Take the first face by default
             face_info = face_list[0]
 
-        assert face_info is not None
+        if face_info is None:
+            # If no faces could be found, use the full frame
+            img_cropped = img_np
+        else:
 
-        try:
-            img_cropped = normalize_image_np(img_np=img_np,
-                                             face_info=face_info,
-                                             color_normalization=color_normalization,
-                                             square=square,
-                                             bbox_scale=bbox_scale,
-                                             rotate=rotate,
-                                             rot_filter=rot_filter)
-        except Exception as e:
+            try:
+                img_cropped = normalize_image_np(img_np=img_np,
+                                                 face_info=face_info,
+                                                 color_normalization=color_normalization,
+                                                 square=square,
+                                                 bbox_scale=bbox_scale,
+                                                 rotate=rotate,
+                                                 rot_filter=rot_filter)
+            except Exception as e:
 
-            if tolerant:
-                # If tolerant, just use the full image
-                print("WARNING: ", e)
-                img_cropped = img
-            else:
-                # Else, forward the exception
-                raise e
+                if tolerant:
+                    # If tolerant, just use the full image
+                    print("WARNING: ", e)
+                    img_cropped = img
+                else:
+                    # Else, forward the exception
+                    raise e
 
+        # Save the new image
         out_name = os.path.join(out_dir, f)
-
         PIL.Image.fromarray(img_cropped).save(out_name)
 
 
