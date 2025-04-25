@@ -50,7 +50,7 @@ export DATADIR=<path_to>/data/DaFEx
 export MODELDIR=<path_to>/models/ResNet50-AffNet-nopreproc-210921
 ```
 
-The `IMG_PREPROC` indicated which normalization technique must be applied to the images before being fed to the prediction model.
+The `IMG_PREPROC` indicates which normalization technique must be applied to the images before being fed to the prediction model.
 Valid values are:
 
 * NoProc - no image processing. Image as it is
@@ -62,6 +62,8 @@ Valid values are:
 * CNormCrop11Rot - before cropping and rotating, a color normalization is performed, by centering RGB channels on the channels mean, and normalizing on 2.5 SD on the full channel dynamic range.
 * CNormCrop12Rot - same as before, with different zoom factor
 
+* CNormEqCrop11Rot - as before, but applying also color normalization through Histogram Equalization
+* CNormEqCrop12Rot - as before, but applying also color normalization through Histogram Equalization
 
 The DATADIR and the MODELDIR are structured like this:
 
@@ -107,10 +109,10 @@ and:
 
 The `images` folder contains the files listed in the `ImageName` column.
 
-Use the following to have an help file.
+Use the following to have a help file.
 
     cd PredictionLab
-    make
+    PYTHONPATH=.. make
 
 Normalized prediction labels are in this order:
 
