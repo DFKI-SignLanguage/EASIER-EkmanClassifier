@@ -6,10 +6,11 @@ sklearn==0.0
 torch==1.12.1
 torchvision==0.13.1
 tqdm==4.62.3
-opencv-python==4.5.3.56
+opencv-python==4.6.0.66
 
 tensorflow==2.9.3
-mtcnn=0.1.1
-mediapipe==0.8.11
+mtcnn==0.1.1
 
 decord==0.6.0
+
+Pillow==9.2.0
