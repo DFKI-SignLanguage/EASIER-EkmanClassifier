@@ -61,6 +61,20 @@ def normalize_images(in_dir: str, out_dir: str,
         img_np: np.ndarray = np.asarray(img)
         # print(img.size)
 
+        # Check for the presence of alpha channel
+        # In case, remove it because the face detector doesn't support it.
+        depth = img_np.shape[2]
+        if depth == 4:
+            # Drop the alpha channel
+            print("WARNING: Dropping alpha channel...")
+            img_np = img_np[:, :, :3]
+        elif depth == 3:
+            pass
+        else:
+            assert False
+
+        assert img_np.shape[2] == 3
+
         #
         # Ask MTCNN to find the faces
         # print(img_np.shape)

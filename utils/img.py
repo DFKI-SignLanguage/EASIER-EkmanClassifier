@@ -284,15 +284,15 @@ def normalize_image_np(img_np: np.ndarray,
 
     # Check for the presence of alpha channel
     # In case, remove it because the face detector doesn't support it.
-    depth = img_np.shape[2]
-    if depth == 4:
-        # Drop the alpha channel
-        print("WARNING: Dropping alpha channel...")
-        img_np = img_np[:, :, :3]
-    elif depth == 3:
-        pass
-    else:
-        assert False
+    # depth = img_np.shape[2]
+    # if depth == 4:
+    #     # Drop the alpha channel
+    #     print("WARNING: Dropping alpha channel...")
+    #     img_np = img_np[:, :, :3]
+    # elif depth == 3:
+    #     pass
+    # else:
+    #     assert False
 
     # Convert into PIL format
     img = PIL.Image.fromarray(img_np, 'RGB')
